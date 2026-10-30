@@ -1,148 +1,177 @@
-import { Image } from 'expo-image';
-import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+import { Image } from "expo-image";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  StyleSheet,
+  View,
+} from "react-native";
 
-export function AnimatedSplashOverlay() {
-  const [animate, setAnimate] = useState(false);
-  const [visible, setVisible] = useState(true);
+type AnimatedSplashOverlayProps = {
+  onFinish?: () => void;
+};
 
-  if (!visible) return null;
+const PARTICLES = [
+  { x: "9%", y: "18%", delay: 0 },
+  { x: "23%", y: "29%", delay: 400 },
+  { x: "78%", y: "17%", delay: 700 },
+  { x: "88%", y: "34%", delay: 200 },
+  { x: "14%", y: "43%", delay: 600 },
+  { x: "84%", y: "53%", delay: 300 },
+  { x: "19%", y: "68%", delay: 900 },
+  { x: "76%", y: "73%", delay: 500 },
+  { x: "31%", y: "83%", delay: 100 },
+  { x: "91%", y: "82%", delay: 800 },
+  { x: "47%", y: "12%", delay: 350 },
+  { x: "65%", y: "88%", delay: 650 },
+];
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: 1 }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
+export function AnimatedSplashOverlay({
+  onFinish,
+}: AnimatedSplashOverlayProps) {
+  const screenOpacity = useRef(new Animated.Value(1)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.96)).current;
 
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+  const particleAnimations = useRef(
+    PARTICLES.map(() => new Animated.Value(0.2))
+  ).current;
 
-  return animate ? (
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 1100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 35,
+        useNativeDriver: false,
+      }),
+    ]).start();
+
+    const loops = particleAnimations.map((particle, index) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(PARTICLES[index].delay),
+          Animated.timing(particle, {
+            toValue: 0.85,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+          Animated.timing(particle, {
+            toValue: 0.2,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+        ])
+      )
+    );
+
+    loops.forEach((loop) => loop.start());
+
+    const timer = setTimeout(() => {
+      Animated.timing(screenOpacity, {
+        toValue: 0,
+        duration: 700,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        if (finished) onFinish?.();
+      });
+    }, 3800);
+
+    return () => {
+      clearTimeout(timer);
+      loops.forEach((loop) => loop.stop());
+    };
+  }, [
+    logoOpacity,
+    logoScale,
+    screenOpacity,
+    particleAnimations,
+    onFinish,
+  ]);
+
+  return (
     <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={styles.splashOverlay}>
-      {image}
+      pointerEvents="auto"
+      style={[styles.screen, { opacity: screenOpacity }]}
+    >
+      <View style={StyleSheet.absoluteFill}>
+        {PARTICLES.map((particle, index) => (
+          <Animated.View
+            key={index}
+            style={[
+              styles.particle,
+              {
+                left: particle.x as any,
+                top: particle.y as any,
+                opacity: particleAnimations[index],
+              },
+            ]}
+          />
+        ))}
+      </View>
+
+      <Animated.View
+        style={[
+          styles.logoContainer,
+          {
+            opacity: logoOpacity,
+            transform: [{ scale: logoScale }],
+          },
+        ]}
+      >
+        <Image
+          source={require("@/assets/images/splash-icon.png")}
+          style={styles.logo}
+          contentFit="contain"
+        />
+      </Animated.View>
     </Animated.View>
-  ) : (
-    <View
-      onLayout={() => {
-        SplashScreen.hideAsync().finally(() => {
-          setAnimate(true);
-        });
-      }}
-      style={styles.splashOverlay}>
-      {image}
-    </View>
   );
 }
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    opacity: 1,
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
 export function AnimatedIcon() {
-  return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
-    </View>
-  );
+  return null;
 }
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  screen: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 999999,
+    backgroundColor: "#020E11",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
+
+  logoContainer: {
+    width: 290,
+    height: 290,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-    zIndex: 100,
+
+  logo: {
+    width: "100%",
+    height: "100%",
   },
-  image: {
-    width: 76,
-    height: 71,
-  },
-  background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
-    width: 128,
-    height: 128,
-    position: 'absolute',
-  },
-  splashOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
+
+  particle: {
+    position: "absolute",
+    width: 2,
+    height: 2,
+    borderRadius: 5,
+    backgroundColor: "#55EDE7",
   },
 });

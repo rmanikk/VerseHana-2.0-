@@ -1,108 +1,158 @@
-import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
-import Animated, { Keyframe, Easing } from 'react-native-reanimated';
+import { Image } from "expo-image";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 
-import classes from './animated-icon.module.css';
-const DURATION = 300;
+type Props = {
+  onFinish?: () => void;
+};
 
-export function AnimatedSplashOverlay() {
-  return null;
-}
+const PARTICLES = [
+  { top: "18%", left: "12%", delay: 0 },
+  { top: "29%", left: "25%", delay: 400 },
+  { top: "16%", left: "78%", delay: 700 },
+  { top: "35%", left: "88%", delay: 200 },
+  { top: "44%", left: "15%", delay: 600 },
+  { top: "53%", left: "84%", delay: 300 },
+  { top: "69%", left: "20%", delay: 900 },
+  { top: "74%", left: "76%", delay: 500 },
+  { top: "83%", left: "32%", delay: 100 },
+  { top: "81%", left: "90%", delay: 800 },
+  { top: "12%", left: "48%", delay: 350 },
+  { top: "88%", left: "65%", delay: 650 },
+];
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 0 }],
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(1.2),
-  },
-});
+export function AnimatedSplashOverlay({ onFinish }: Props) {
+  const fade = useRef(new Animated.Value(1)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.96)).current;
 
-const logoKeyframe = new Keyframe({
-  0: {
-    opacity: 0,
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    opacity: 0,
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(1.2),
-  },
-});
+  const particles = useRef(
+    PARTICLES.map(() => new Animated.Value(0.2)),
+  ).current;
 
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '-180deg' }, { scale: 0.8 }],
-    opacity: 0,
-  },
-  [DURATION / 1000]: {
-    transform: [{ rotateZ: '0deg' }, { scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 1100,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 8,
+        tension: 35,
+        useNativeDriver: false,
+      }),
+    ]).start();
 
-export function AnimatedIcon() {
+    const particleLoops = particles.map((particle, index) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(PARTICLES[index].delay),
+          Animated.timing(particle, {
+            toValue: 0.85,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+          Animated.timing(particle, {
+            toValue: 0.2,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+        ]),
+      ),
+    );
+
+    particleLoops.forEach((loop) => loop.start());
+
+    const timer = setTimeout(() => {
+      Animated.timing(fade, {
+        toValue: 0,
+        duration: 700,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: false,
+      }).start(({ finished }) => {
+        if (finished) onFinish?.();
+      });
+    }, 2800);
+
+    return () => {
+      clearTimeout(timer);
+      particleLoops.forEach((loop) => loop.stop());
+    };
+  }, [fade, logoOpacity, logoScale, particles, onFinish]);
+
   return (
-    <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
+    <Animated.View style={[styles.screen, { opacity: fade }]}>
+      {/* Subtle floating particles */}
+      <View style={StyleSheet.absoluteFill}>
+        {PARTICLES.map((particle, index) => (
+          <Animated.View
+            key={index}
+            style={[
+              styles.particle,
+              {
+                top: particle.top as any,
+                left: particle.left as any,
+                opacity: particles[index],
+              },
+            ]}
+          />
+        ))}
+      </View>
 
-      <Animated.View style={styles.background} entering={keyframe.duration(DURATION)}>
-        <div className={classes.expoLogoBackground} />
+      {/* Original logo, including its wordmark */}
+      <Animated.View
+        style={[
+          styles.logoContainer,
+          {
+            opacity: logoOpacity,
+            transform: [{ scale: logoScale }],
+          },
+        ]}
+      >
+        <Image
+          source={require("@/assets/images/splash-icon.png")}
+          style={styles.logo}
+          contentFit="contain"
+        />
       </Animated.View>
-
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
+export function AnimatedIcon() {
+  return null;
+}
+
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    width: '100%',
-    zIndex: 1000,
-    position: 'absolute',
-    top: 128 / 2 + 138,
+  screen: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "#020E11",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 999999,
+    overflow: "hidden",
   },
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  logoContainer: {
+    width: 290,
+    height: 290,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
+
+  logo: {
+    width: "100%",
+    height: "100%",
   },
-  iconContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 128,
-    height: 128,
-  },
-  image: {
-    position: 'absolute',
-    width: 76,
-    height: 71,
-  },
-  background: {
-    width: 128,
-    height: 128,
-    position: 'absolute',
+
+  particle: {
+    position: "absolute",
+    width: 2,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#55EDE7",
   },
 });
