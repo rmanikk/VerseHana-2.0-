@@ -3,77 +3,43 @@ import "@/global.css";
 import { Platform } from "react-native";
 
 export const Colors = {
-  light: {
-    // Brand
-    primary: "#0F9F91",
-    primaryPressed: "#0B8278",
-    cyan: "#0891B2",
-
-    // Backgrounds
-    background: "#F4FAFA",
-    backgroundElement: "#FFFFFF",
-    backgroundSelected: "#EAF5F5",
-    surfaceElevated: "#FFFFFF",
-
-    // Text
-    text: "#102A2D",
-    textSecondary: "#527174",
-    textMuted: "#789294",
-
-    // Borders and states
-    border: "#D5E7E8",
-    success: "#15803D",
-    error: "#DC2626",
-
-    // Music moods
-    moodHappy: "#E9A23B",
-    moodCalm: "#0F9F91",
-    moodRain: "#6487C8",
-    moodNight: "#7566B5",
-    moodLove: "#D96C91",
-    moodFocus: "#0891B2",
-    moodParty: "#D977D0",
-    moodSad: "#7186A8",
-  },
-
   dark: {
     // Brand
-    primary: "#14B8A6",
-    primaryPressed: "#0D9488",
-    cyan: "#22D3EE",
+    primary: "#35C9BC",
+    primaryPressed: "#20A99D",
+    cyan: "#58D8E8",
 
     // Backgrounds
-    background: "#06181B",
-    backgroundElement: "#0D272A",
-    backgroundSelected: "#123437",
-    surfaceElevated: "#173D40",
+    background: "#07191B",
+    backgroundElement: "#102B2D",
+    backgroundSelected: "#194144",
+    surfaceElevated: "#1B3B3D",
 
     // Text
-    text: "#F5FFFF",
-    textSecondary: "#9FB8BA",
-    textMuted: "#718D90",
+    text: "#F2FAF9",
+    textSecondary: "#A3B8B8",
+    textMuted: "#718B8C",
 
     // Borders and states
-    border: "#1B3B3E",
-    success: "#4ADE80",
-    error: "#F87171",
+    border: "#234345",
+    success: "#36C978",
+    error: "#F07878",
 
     // Music moods
     moodHappy: "#F6BC57",
-    moodCalm: "#14B8A6",
+    moodCalm: "#35C9BC",
     moodRain: "#83A8F0",
     moodNight: "#A99AF5",
     moodLove: "#F28BAE",
-    moodFocus: "#22D3EE",
+    moodFocus: "#65C98B",
     moodParty: "#E9A1E0",
     moodSad: "#9BAED0",
   },
 } as const;
 
-export type ThemeName = keyof typeof Colors;
+export type ThemeName = "dark";
 
-export type ThemeColor = keyof (typeof Colors)["light"] &
-  keyof (typeof Colors)["dark"];
+export type ThemeColor = keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {

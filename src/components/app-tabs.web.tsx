@@ -3,10 +3,16 @@ import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
+import { Colors, Spacing } from "@/constants/theme";
+
+const colors = Colors.dark;
 
 const tabs = [
   { label: "Home", href: "/" as const },
-  { label: "Explore", href: "/explore" as const },
+  { label: "Search", href: "/search" as const },
+  { label: "Pulse", href: "/pulse" as const },
+  { label: "Library", href: "/library" as const },
+  { label: "Profile", href: "/profile" as const },
 ];
 
 export default function AppTabsWeb() {
@@ -14,7 +20,6 @@ export default function AppTabsWeb() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Fallback in case the splash animation fails to finish.
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, 4500);
@@ -41,7 +46,10 @@ export default function AppTabsWeb() {
                 style={[styles.link, active && styles.activeLink]}
               >
                 <Text
-                  style={[styles.linkText, active && styles.activeLinkText]}
+                  style={[
+                    styles.linkText,
+                    active && styles.activeLinkText,
+                  ]}
                 >
                   {tab.label}
                 </Text>
@@ -57,7 +65,9 @@ export default function AppTabsWeb() {
 
       {showSplash && (
         <View style={styles.splashOverlay}>
-          <AnimatedSplashOverlay onFinish={() => setShowSplash(false)} />
+          <AnimatedSplashOverlay
+            onFinish={() => setShowSplash(false)}
+          />
         </View>
       )}
     </View>
@@ -68,46 +78,56 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     minHeight: "100%",
-    backgroundColor: "#06181B",
+    backgroundColor: colors.background,
   },
+
   navigation: {
     minHeight: 68,
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.four,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#183438",
+    borderBottomColor: colors.border,
   },
+
   brand: {
-    color: "#FFFFFF",
+    color: colors.text,
     fontSize: 20,
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: -0.6,
   },
+
   links: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 20,
+    gap: 24,
   },
+
   link: {
     paddingVertical: 12,
     textDecorationLine: "none",
   },
+
   activeLink: {
     borderBottomWidth: 2,
-    borderBottomColor: "#35D0C1",
+    borderBottomColor: colors.primary,
   },
+
   linkText: {
-    color: "#8FA8AA",
-    fontSize: 15,
+    color: colors.textMuted,
+    fontSize: 14,
   },
+
   activeLinkText: {
-    color: "#35D0C1",
-    fontWeight: "600",
+    color: colors.primary,
+    fontWeight: "700",
   },
+
   content: {
     flex: 1,
   },
+
   splashOverlay: {
     position: "absolute",
     top: 0,

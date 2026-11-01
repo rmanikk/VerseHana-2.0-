@@ -1,9 +1,9 @@
-import { useState } from "react";
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
   useColorScheme,
 } from "react-native";
@@ -11,49 +11,40 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors, Radius, Spacing } from "@/constants/theme";
 
-const moods = [
-  { name: "All", color: "#14B8A6" },
-  { name: "Happy", color: "#F6BC57" },
-  { name: "Calm", color: "#14B8A6" },
-  { name: "Rain", color: "#83A8F0" },
-  { name: "Night", color: "#A99AF5" },
-  { name: "Focus", color: "#22D3EE" },
-  { name: "Love", color: "#F28BAE" },
-];
-
-const tracks = [
+const recentSongs = [
   {
     title: "Midnight Dreams",
     artist: "Atmospheric Sounds",
-    mood: "Night",
     symbol: "☾",
     color: "#31365F",
   },
   {
     title: "Ocean of Calm",
     artist: "Ambient Collective",
-    mood: "Calm",
     symbol: "≈",
     color: "#126E78",
   },
   {
     title: "Golden Hour",
     artist: "Daylight",
-    mood: "Happy",
     symbol: "☼",
     color: "#8B6031",
   },
 ];
 
-export default function HomeScreen() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === "light" ? "light" : "dark"];
-  const [selectedMood, setSelectedMood] = useState("All");
+const pulsePosts = [
+  {
+    user: "maya",
+    text: "Rainy evenings always sound better with ambient music.",
+  },
+  {
+    user: "arjun",
+    text: "Just discovered a song that feels like a late-night drive.",
+  },
+];
 
-  const visibleTracks =
-    selectedMood === "All"
-      ? tracks
-      : tracks.filter((track) => track.mood === selectedMood);
+export default function HomeScreen() {
+  const colors = Colors.dark;
 
   return (
     <SafeAreaView
@@ -61,246 +52,393 @@ export default function HomeScreen() {
       edges={["top", "left", "right"]}
     >
       <ScrollView
-        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
       >
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.brand}>
-            <View
-              style={[styles.brandMark, { backgroundColor: colors.primary }]}
-            >
-              <Text style={styles.brandMarkText}>V</Text>
-            </View>
-
-            <View>
-              <Text style={[styles.brandName, { color: colors.text }]}>
-                VerseHana
-              </Text>
-              <Text
-                style={[styles.brandCaption, { color: colors.textSecondary }]}
-              >
-                YOUR WORLD, YOUR SOUND
-              </Text>
-            </View>
+          <View>
+            <Text style={[styles.brand, { color: colors.text }]}>
+              VerseHana
+            </Text>
+            <Text style={[styles.caption, { color: colors.textMuted }]}>
+              YOUR WORLD, YOUR SOUND
+            </Text>
           </View>
 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Profile"
             style={[
-              styles.avatar,
+              styles.profileButton,
               {
                 backgroundColor: colors.backgroundElement,
                 borderColor: colors.border,
               },
             ]}
           >
-            <Text style={{ color: colors.primary, fontSize: 19 }}>♙</Text>
+            <Text style={[styles.profileIcon, { color: colors.primary }]}>
+              ♙
+            </Text>
           </Pressable>
         </View>
 
-        <View style={styles.greeting}>
+        {/* Welcome */}
+        <View style={styles.intro}>
           <Text style={[styles.eyebrow, { color: colors.primary }]}>
-            YOUR DAILY SOUNDTRACK
+            WELCOME TO VERSEHANA
           </Text>
+
           <Text style={[styles.heading, { color: colors.text }]}>
-            Find your{"\n"}own rhythm.
+            Find your{"\n"}next sound.
           </Text>
+
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            Whatever you feel, there’s a sound for it.
+            Explore music, discover artists, and connect with the community.
           </Text>
         </View>
 
+        {/* Search */}
         <Pressable
           accessibilityRole="button"
-          onPress={() => setSelectedMood("Focus")}
           style={[
-            styles.featureCard,
+            styles.searchContainer,
             {
               backgroundColor: colors.backgroundElement,
               borderColor: colors.border,
             },
           ]}
         >
-          <View style={styles.featureCopy}>
-            <Text style={[styles.featureLabel, { color: colors.cyan }]}>
-              YOUR MOMENT
-            </Text>
-            <Text style={[styles.featureTitle, { color: colors.text }]}>
-              Tune into yourself.
-            </Text>
-            <Text
-              style={[
-                styles.featureDescription,
-                { color: colors.textSecondary },
-              ]}
-            >
-              Discover sounds that match your mood.
-            </Text>
-            <View
-              style={[
-                styles.featureButton,
-                { backgroundColor: colors.primary },
-              ]}
-            >
-              <Text style={styles.featureButtonText}>Explore sounds →</Text>
-            </View>
-          </View>
+          <Text style={[styles.searchIcon, { color: colors.textMuted }]}>
+            ⌕
+          </Text>
 
-          <View
-            style={[
-              styles.featureArt,
-              { backgroundColor: colors.backgroundSelected },
-            ]}
-          >
-            <View
-              style={[styles.artCircle, { backgroundColor: colors.primary }]}
-            />
-            <View
-              style={[styles.artCircleSmall, { backgroundColor: colors.cyan }]}
-            />
-            <Text style={[styles.artSymbol, { color: colors.text }]}>♫</Text>
-          </View>
+          <TextInput
+            placeholder="Search songs, artists, albums..."
+            placeholderTextColor={colors.textMuted}
+            style={[styles.searchInput, { color: colors.text }]}
+            editable={false}
+          />
         </Pressable>
 
+        {/* Your Library */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              What’s your mood?
+              Your library
             </Text>
+
             <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
-              EXPLORE
+              SIGN IN
             </Text>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.moodList}
-          >
-            {moods.map((mood) => {
-              const active = selectedMood === mood.name;
-
-              return (
-                <Pressable
-                  key={mood.name}
-                  onPress={() => setSelectedMood(mood.name)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  style={[
-                    styles.moodChip,
-                    {
-                      backgroundColor: active
-                        ? colors.primary
-                        : colors.backgroundElement,
-                      borderColor: active ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.moodDot,
-                      { backgroundColor: active ? "#FFFFFF" : mood.color },
-                    ]}
-                  />
-                  <Text
-                    style={{
-                      color: active ? "#FFFFFF" : colors.textSecondary,
-                      fontSize: 13,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {mood.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Made for your mood
-            </Text>
-            <Text style={[styles.sectionHint, { color: colors.primary }]}>
-              {visibleTracks.length} PICKS
-            </Text>
-          </View>
-
-          {visibleTracks.length === 0 ? (
-            <View
+          <View style={styles.libraryGrid}>
+            <Pressable
               style={[
-                styles.emptyState,
+                styles.libraryCard,
                 {
                   backgroundColor: colors.backgroundElement,
                   borderColor: colors.border,
                 },
               ]}
             >
-              <Text style={{ color: colors.textSecondary }}>
-                More {selectedMood.toLowerCase()} sounds coming soon.
-              </Text>
-              <Pressable onPress={() => setSelectedMood("All")}>
-                <Text style={{ color: colors.primary, fontWeight: "600" }}>
-                  Browse all picks
+              <View
+                style={[
+                  styles.libraryIcon,
+                  { backgroundColor: colors.backgroundSelected },
+                ]}
+              >
+                <Text style={[styles.libraryIconText, { color: colors.primary }]}>
+                  ♡
                 </Text>
-              </Pressable>
+              </View>
+
+              <Text style={[styles.libraryTitle, { color: colors.text }]}>
+                Liked songs
+              </Text>
+
+              <Text
+                style={[
+                  styles.libraryDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Save songs you love
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.libraryCard,
+                {
+                  backgroundColor: colors.backgroundElement,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.libraryIcon,
+                  { backgroundColor: colors.backgroundSelected },
+                ]}
+              >
+                <Text style={[styles.libraryIconText, { color: colors.cyan }]}>
+                  +
+                </Text>
+              </View>
+
+              <Text style={[styles.libraryTitle, { color: colors.text }]}>
+                Playlists
+              </Text>
+
+              <Text
+                style={[
+                  styles.libraryDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Create your own
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={[styles.guestNote, { color: colors.textMuted }]}>
+            Sign in to save music and build your personal library.
+          </Text>
+        </View>
+
+        {/* Recently Played */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Recently played
+            </Text>
+
+            <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+              YOUR HISTORY
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.emptyHistory,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.historyIcon,
+                { backgroundColor: colors.backgroundSelected },
+              ]}
+            >
+              <Text style={[styles.historyIconText, { color: colors.primary }]}>
+                ◷
+              </Text>
             </View>
-          ) : (
-            <View style={styles.trackList}>
-              {visibleTracks.map((track, index) => (
-                <Pressable
-                  key={track.title}
-                  onPress={() => {
-                    // Music playback will be connected in a later phase.
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${track.title} by ${track.artist}`}
+
+            <View style={styles.historyCopy}>
+              <Text style={[styles.historyTitle, { color: colors.text }]}>
+                Your listening history starts here
+              </Text>
+
+              <Text
+                style={[
+                  styles.historyDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Sign in to keep track of what you listen to.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Music Moods */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Your music moods
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.moodCard,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.moodVisual}>
+              <View
+                style={[
+                  styles.moodRingOuter,
+                  { borderColor: colors.border },
+                ]}
+              >
+                <View
                   style={[
-                    styles.trackRow,
+                    styles.moodRingInner,
                     {
-                      backgroundColor: colors.backgroundElement,
-                      borderColor: colors.border,
+                      backgroundColor: colors.backgroundSelected,
+                      borderColor: colors.primary,
                     },
                   ]}
                 >
-                  <View
-                    style={[styles.trackArt, { backgroundColor: track.color }]}
-                  >
-                    <Text style={styles.trackSymbol}>{track.symbol}</Text>
-                  </View>
+                  <Text style={[styles.moodLock, { color: colors.primary }]}>
+                    ◉
+                  </Text>
+                </View>
+              </View>
+            </View>
 
-                  <View style={styles.trackInfo}>
-                    <Text style={[styles.trackTitle, { color: colors.text }]}>
-                      {track.title}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.trackArtist,
-                        { color: colors.textSecondary },
-                      ]}
-                    >
-                      {track.artist}
-                    </Text>
-                  </View>
+            <View style={styles.moodCopy}>
+              <Text style={[styles.moodTitle, { color: colors.text }]}>
+                Discover your listening patterns
+              </Text>
+
+              <Text
+                style={[
+                  styles.moodDescription,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                Once you sign in and search for music, VerseHana can show the
+                moods behind your recent searches.
+              </Text>
+
+              <Text style={[styles.moodHint, { color: colors.primary }]}>
+                PERSONAL INSIGHT
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Pulse */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Pulse
+              </Text>
+
+              <Text
+                style={[styles.sectionSubtitle, { color: colors.textSecondary }]}
+              >
+                What the community is feeling
+              </Text>
+            </View>
+
+            <Text style={[styles.sectionHint, { color: colors.primary }]}>
+              SEE ALL
+            </Text>
+          </View>
+
+          <View style={styles.pulseList}>
+            {pulsePosts.map((post) => (
+              <Pressable
+                key={post.user}
+                style={[
+                  styles.pulseCard,
+                  {
+                    backgroundColor: colors.backgroundElement,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.pulseAvatar,
+                    { backgroundColor: colors.backgroundSelected },
+                  ]}
+                >
+                  <Text style={[styles.pulseAvatarText, { color: colors.primary }]}>
+                    {post.user.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+
+                <View style={styles.pulseContent}>
+                  <Text style={[styles.pulseUser, { color: colors.text }]}>
+                    @{post.user}
+                  </Text>
 
                   <Text
-                    style={[styles.trackNumber, { color: colors.textMuted }]}
+                    style={[styles.pulseText, { color: colors.textSecondary }]}
                   >
-                    {String(index + 1).padStart(2, "0")}
+                    {post.text}
                   </Text>
-                  <Text style={[styles.playIcon, { color: colors.primary }]}>
-                    ▶
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
+                </View>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={[styles.pulseGuestNote, { color: colors.textMuted }]}>
+            You can explore Pulse as a guest. Sign in to post and interact.
+          </Text>
+        </View>
+
+        {/* Guest CTA */}
+        <View
+          style={[
+            styles.accountCard,
+            {
+              backgroundColor: colors.backgroundSelected,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.accountTitle, { color: colors.text }]}>
+            Make VerseHana yours.
+          </Text>
+
+          <Text
+            style={[
+              styles.accountDescription,
+              { color: colors.textSecondary },
+            ]}
+          >
+            Create an account to listen, save music, build playlists, and
+            participate in Pulse.
+          </Text>
+
+          <View style={styles.accountActions}>
+            <Pressable
+              style={[
+                styles.primaryButton,
+                { backgroundColor: colors.primary },
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>Create account</Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.secondaryButton,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.backgroundElement,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  { color: colors.text },
+                ]}
+              >
+                Log in
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <Text style={[styles.footer, { color: colors.textMuted }]}>
-          FIND YOUR FREQUENCY.
+          EXPLORE FREELY. LISTEN AND PARTICIPATE AS A MEMBER.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -311,238 +449,366 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+
   content: {
     width: "100%",
     maxWidth: 760,
     alignSelf: "center",
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: 40,
+    paddingBottom: 48,
     gap: Spacing.four,
   },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
+
   brand: {
+    fontSize: 21,
+    fontWeight: "800",
+    letterSpacing: -0.7,
+  },
+
+  caption: {
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    marginTop: 3,
+  },
+
+  profileButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  profileIcon: {
+    fontSize: 19,
+  },
+
+  intro: {
+    paddingTop: Spacing.two,
+    gap: 8,
+  },
+
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.8,
+  },
+
+  heading: {
+    fontSize: 40,
+    lineHeight: 45,
+    fontWeight: "800",
+    letterSpacing: -1.7,
+  },
+
+  description: {
+    fontSize: 14,
+    lineHeight: 21,
+    maxWidth: 520,
+  },
+
+  searchContainer: {
+    minHeight: 54,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 16,
     gap: 10,
   },
-  brandMark: {
+
+  searchIcon: {
+    fontSize: 25,
+  },
+
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+
+  section: {
+    gap: 12,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  sectionTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+  },
+
+  sectionSubtitle: {
+    fontSize: 12,
+    marginTop: 3,
+  },
+
+  sectionHint: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.1,
+  },
+
+  libraryGrid: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  libraryCard: {
+    flex: 1,
+    minHeight: 132,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: 14,
+    justifyContent: "space-between",
+  },
+
+  libraryIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  libraryIconText: {
+    fontSize: 21,
+    fontWeight: "700",
+  },
+
+  libraryTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 12,
+  },
+
+  libraryDescription: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 3,
+  },
+
+  guestNote: {
+    fontSize: 11,
+    lineHeight: 17,
+  },
+
+  emptyHistory: {
+    minHeight: 100,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 13,
+  },
+
+  historyIcon: {
     width: 42,
     height: 42,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  brandMarkText: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "800",
+
+  historyIconText: {
+    fontSize: 21,
   },
-  brandName: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.6,
+
+  historyCopy: {
+    flex: 1,
+    gap: 4,
   },
-  brandCaption: {
-    fontSize: 9,
+
+  historyTitle: {
+    fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 1.5,
-    marginTop: 2,
   },
-  avatar: {
-    width: 42,
-    height: 42,
+
+  historyDescription: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+
+  moodCard: {
+    borderRadius: Radius.xl,
     borderWidth: 1,
-    borderRadius: 21,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 18,
+  },
+
+  moodVisual: {
+    width: 108,
+    height: 108,
     alignItems: "center",
     justifyContent: "center",
   },
-  greeting: {
-    gap: 9,
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
+
+  moodRingOuter: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  eyebrow: {
+
+  moodRingInner: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  moodLock: {
+    fontSize: 22,
+  },
+
+  moodCopy: {
+    flex: 1,
+    gap: 7,
+  },
+
+  moodTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+
+  moodDescription: {
     fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 2,
+    lineHeight: 17,
   },
-  heading: {
-    fontSize: 42,
+
+  moodHint: {
+    fontSize: 9,
     fontWeight: "800",
-    letterSpacing: -1.8,
-    lineHeight: 47,
+    letterSpacing: 1.2,
+    marginTop: 2,
   },
-  description: {
+
+  pulseList: {
+    gap: 10,
+  },
+
+  pulseCard: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: 14,
+    flexDirection: "row",
+    gap: 12,
+  },
+
+  pulseAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  pulseAvatarText: {
     fontSize: 14,
-    lineHeight: 22,
+    fontWeight: "800",
   },
-  featureCard: {
-    minHeight: 190,
+
+  pulseContent: {
+    flex: 1,
+    gap: 4,
+  },
+
+  pulseUser: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  pulseText: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+
+  pulseGuestNote: {
+    fontSize: 11,
+    lineHeight: 17,
+  },
+
+  accountCard: {
     borderRadius: Radius.xl,
     borderWidth: 1,
-    padding: Spacing.three,
-    flexDirection: "row",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  featureCopy: {
-    flex: 1,
+    padding: 20,
     gap: 9,
-    paddingRight: 4,
   },
-  featureLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  featureTitle: {
+
+  accountTitle: {
     fontSize: 21,
-    lineHeight: 26,
     fontWeight: "800",
     letterSpacing: -0.5,
   },
-  featureDescription: {
+
+  accountDescription: {
     fontSize: 12,
     lineHeight: 18,
-    maxWidth: 230,
   },
-  featureButton: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+
+  accountActions: {
+    flexDirection: "row",
+    gap: 9,
+    marginTop: 7,
+  },
+
+  primaryButton: {
+    flex: 1,
+    minHeight: 44,
     borderRadius: Radius.pill,
-    marginTop: 4,
-  },
-  featureButtonText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  featureArt: {
-    width: 105,
-    height: 135,
-    borderRadius: 60,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-  },
-  artCircle: {
-    position: "absolute",
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    top: 7,
-    right: -28,
-    opacity: 0.8,
-  },
-  artCircleSmall: {
-    position: "absolute",
-    width: 55,
-    height: 55,
-    borderRadius: 28,
-    bottom: 8,
-    left: -12,
-    opacity: 0.85,
-  },
-  artSymbol: {
-    fontSize: 55,
-    fontWeight: "800",
-  },
-  section: {
-    gap: Spacing.three,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: "800",
-    letterSpacing: -0.4,
-  },
-  sectionHint: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.1,
-  },
-  moodList: {
-    gap: 9,
-    paddingRight: Spacing.three,
-  },
-  moodChip: {
-    minHeight: 40,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
     paddingHorizontal: 14,
   },
-  moodDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
   },
-  trackList: {
-    gap: 10,
-  },
-  trackRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 10,
-    borderRadius: Radius.lg,
+
+  secondaryButton: {
+    minWidth: 90,
+    minHeight: 44,
+    borderRadius: Radius.pill,
     borderWidth: 1,
-  },
-  trackArt: {
-    width: 54,
-    height: 54,
-    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 16,
   },
-  trackSymbol: {
-    color: "#FFFFFF",
-    fontSize: 27,
-    fontWeight: "700",
-  },
-  trackInfo: {
-    flex: 1,
-    gap: 5,
-  },
-  trackTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  trackArtist: {
+
+  secondaryButtonText: {
     fontSize: 12,
-  },
-  trackNumber: {
-    fontSize: 11,
     fontWeight: "700",
   },
-  playIcon: {
-    fontSize: 14,
-    paddingHorizontal: 5,
-  },
-  emptyState: {
-    padding: Spacing.three,
-    gap: 12,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-  },
+
   footer: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 2,
     textAlign: "center",
-    paddingTop: Spacing.two,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.4,
+    marginTop: 4,
   },
 });
