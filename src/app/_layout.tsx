@@ -20,10 +20,7 @@ const theme = {
 export default function TabLayout() {
   return (
     <ThemeProvider value={theme}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={Colors.dark.background}
-      />
+      <StatusBar barStyle="light-content" />
       <AppTabs />
     </ThemeProvider>
   );
