@@ -2,8 +2,9 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 
 import {
-  signup,
-  verifyEmail,
+    resendOtp,
+    signup,
+    verifyEmail,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
@@ -22,8 +23,15 @@ const verifyLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.post("/signup", signupLimiter, signup);
+const resendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
 
+router.post("/signup", signupLimiter, signup);
 router.post("/verify-email", verifyLimiter, verifyEmail);
+router.post("/resend-otp", resendLimiter, resendOtp);
 
 export default router;

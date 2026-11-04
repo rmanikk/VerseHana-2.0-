@@ -134,3 +134,127 @@ export const verifyUserOtp = async (email, otp) => {
     client.release();
   }
 };
+
+export const resendUserOtp = async (email) => {
+  const client = await pool.connect();
+  let transactionOpen = false;
+  let verificationId = null;
+
+  try {
+    await client.query("BEGIN");
+    transactionOpen = true;
+
+    // Lock the user row so simultaneous resend requests cannot
+    // create multiple OTPs at the same time.
+    const userResult = await client.query(
+      `SELECT id, email, email_verified
+       FROM users
+       WHERE email = $1
+       FOR UPDATE`,
+      [email]
+    );
+
+    // Use the same outward response for unknown and verified accounts.
+    if (
+      userResult.rows.length === 0 ||
+      userResult.rows[0].email_verified
+    ) {
+      await client.query("COMMIT");
+      transactionOpen = false;
+      return { sent: false };
+    }
+
+    const user = userResult.rows[0];
+
+    // Check when the most recent OTP was requested.
+    const latestOtpResult = await client.query(
+      `SELECT created_at
+       FROM email_verifications
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [user.id]
+    );
+
+    if (latestOtpResult.rows.length > 0) {
+      const lastRequestedAt = new Date(
+        latestOtpResult.rows[0].created_at
+      ).getTime();
+
+      const elapsedSeconds = Math.floor(
+        (Date.now() - lastRequestedAt) / 1000
+      );
+
+      const remainingSeconds = 60 - elapsedSeconds;
+
+      if (remainingSeconds > 0) {
+        await client.query("COMMIT");
+        transactionOpen = false;
+
+        return {
+          sent: false,
+          cooldown: true,
+          retryAfterSeconds: remainingSeconds,
+        };
+      }
+    }
+
+    // Invalidate all previous unused codes.
+    await client.query(
+      `UPDATE email_verifications
+       SET expires_at = NOW()
+       WHERE user_id = $1
+         AND verified_at IS NULL
+         AND expires_at > NOW()`,
+      [user.id]
+    );
+
+    const otp = generateOtp();
+    const otpHash = hashOtp(otp);
+
+    const newOtpResult = await client.query(
+      `INSERT INTO email_verifications (
+        user_id,
+        otp_hash,
+        expires_at
+      )
+      VALUES ($1, $2, NOW() + INTERVAL '10 minutes')
+      RETURNING id`,
+      [user.id, otpHash]
+    );
+
+    verificationId = newOtpResult.rows[0].id;
+
+    await client.query("COMMIT");
+    transactionOpen = false;
+
+    // Send only after the database transaction has committed.
+    try {
+      await sendVerificationEmail(user.email, otp);
+    } catch (emailError) {
+      // Invalidate the code if delivery fails.
+      await query(
+        `UPDATE email_verifications
+         SET expires_at = NOW()
+         WHERE id = $1`,
+        [verificationId]
+      );
+
+      const error = new Error(
+        "We couldn't send your verification email. Please try again later."
+      );
+      error.statusCode = 502;
+      throw error;
+    }
+
+    return { sent: true };
+  } catch (error) {
+    if (transactionOpen) {
+      await client.query("ROLLBACK").catch(() => {});
+    }
+
+    throw error;
+  } finally {
+    client.release();
+  }
+};

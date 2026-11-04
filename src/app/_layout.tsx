@@ -1,7 +1,6 @@
-import { DarkTheme, ThemeProvider } from "expo-router";
-import { StatusBar } from "react-native";
+import { DarkTheme, Stack, ThemeProvider } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 
-import AppTabs from "@/components/app-tabs";
 import { Colors } from "@/constants/theme";
 
 const theme = {
@@ -17,11 +16,17 @@ const theme = {
   },
 };
 
-export default function TabLayout() {
+export default function RootLayout() {
   return (
     <ThemeProvider value={theme}>
-      <StatusBar barStyle="light-content" />
-      <AppTabs />
+      <StatusBar style="light" />
+
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="verify-otp" />
+      </Stack>
     </ThemeProvider>
   );
 }

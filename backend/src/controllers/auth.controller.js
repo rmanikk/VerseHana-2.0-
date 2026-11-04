@@ -1,8 +1,14 @@
-import { signupSchema } from "../utils/auth.validation.js";
+import {
+  signupSchema,
+  resendOtpSchema,
+} from "../utils/auth.validation.js";
+
 import { registerUser } from "../services/auth.service.js";
+
 import {
   createAndSendOtp,
   verifyUserOtp,
+  resendUserOtp,
 } from "../services/otp.service.js";
 
 export const signup = async (req, res, next) => {
@@ -37,7 +43,8 @@ export const signup = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      message: "Account created. Check your email for the verification code.",
+      message:
+        "Account created. Check your email for the verification code.",
       user,
     });
   } catch (error) {
@@ -68,6 +75,40 @@ export const verifyEmail = async (req, res, next) => {
       success: true,
       message: "Email verified successfully.",
       user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resendOtp = async (req, res, next) => {
+  try {
+    const validation = resendOtpSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address.",
+      });
+    }
+
+    const email = validation.data.email.toLowerCase();
+
+    const result = await resendUserOtp(email);
+
+    if (result.cooldown) {
+      return res.status(429).json({
+        success: false,
+        message: `Please wait ${result.retryAfterSeconds} seconds before requesting another code.`,
+        retryAfterSeconds: result.retryAfterSeconds,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.sent
+        ? "A new verification code has been sent to your email."
+        : "If an unverified account exists for this email, a verification code can be requested.",
     });
   } catch (error) {
     next(error);

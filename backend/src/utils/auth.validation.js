@@ -28,3 +28,11 @@ export const signupSchema = z.object({
     .min(8, "Password must contain at least 8 characters.")
     .max(128, "Password cannot exceed 128 characters."),
 });
+
+export const resendOtpSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Please enter a valid email address.")
+    .max(255, "Email is too long."),
+});
