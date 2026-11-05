@@ -44,13 +44,13 @@ export function AnimatedSplashOverlay({
         toValue: 1,
         duration: 1100,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.spring(logoScale, {
         toValue: 1,
         friction: 8,
         tension: 35,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
 
@@ -61,12 +61,12 @@ export function AnimatedSplashOverlay({
           Animated.timing(particle, {
             toValue: 0.85,
             duration: 1200,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
           Animated.timing(particle, {
             toValue: 0.2,
             duration: 1200,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ])
       )
@@ -79,7 +79,7 @@ export function AnimatedSplashOverlay({
         toValue: 0,
         duration: 700,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: false,
+        useNativeDriver: true,
       }).start(({ finished }) => {
         if (finished) onFinish?.();
       });

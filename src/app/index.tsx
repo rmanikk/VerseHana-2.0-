@@ -1,3 +1,4 @@
+import * as SplashScreen from "expo-splash-screen";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -119,7 +120,12 @@ export default function WelcomeScreen() {
   const cardWidth = Math.min((width - 64) / 3, 118);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView
+  style={styles.safeArea}
+  onLayout={() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }}
+>
       <LinearGradient
         colors={["#061719", "#07191B", "#031011"]}
         locations={[0, 0.55, 1]}

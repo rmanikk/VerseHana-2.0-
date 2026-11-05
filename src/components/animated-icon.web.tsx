@@ -1,3 +1,4 @@
+
 import { Image } from "expo-image";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
@@ -27,7 +28,7 @@ export function AnimatedSplashOverlay({ onFinish }: Props) {
   const logoScale = useRef(new Animated.Value(0.96)).current;
 
   const particles = useRef(
-    PARTICLES.map(() => new Animated.Value(0.2)),
+    PARTICLES.map(() => new Animated.Value(0.2))
   ).current;
 
   useEffect(() => {
@@ -60,8 +61,8 @@ export function AnimatedSplashOverlay({ onFinish }: Props) {
             duration: 1200,
             useNativeDriver: false,
           }),
-        ]),
-      ),
+        ])
+      )
     );
 
     particleLoops.forEach((loop) => loop.start());
@@ -75,7 +76,7 @@ export function AnimatedSplashOverlay({ onFinish }: Props) {
       }).start(({ finished }) => {
         if (finished) onFinish?.();
       });
-    }, 2800);
+    }, 3800);
 
     return () => {
       clearTimeout(timer);
@@ -85,7 +86,6 @@ export function AnimatedSplashOverlay({ onFinish }: Props) {
 
   return (
     <Animated.View style={[styles.screen, { opacity: fade }]}>
-      {/* Subtle floating particles */}
       <View style={StyleSheet.absoluteFill}>
         {PARTICLES.map((particle, index) => (
           <Animated.View
@@ -102,7 +102,6 @@ export function AnimatedSplashOverlay({ onFinish }: Props) {
         ))}
       </View>
 
-      {/* Original logo, including its wordmark */}
       <Animated.View
         style={[
           styles.logoContainer,

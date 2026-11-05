@@ -1,9 +1,11 @@
 
-import { useEffect } from "react";
+import { useCallback, useState } from "react";
+import { View } from "react-native";
 import { DarkTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 
+import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { Colors } from "@/constants/theme";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -22,21 +24,37 @@ const theme = {
 };
 
 export default function RootLayout() {
-  useEffect(() => {
+  const [rootReady, setRootReady] = useState(false);
+  const [showAnimatedSplash, setShowAnimatedSplash] = useState(true);
+
+  const onRootLayout = useCallback(() => {
+    if (rootReady) return;
+
     SplashScreen.hideAsync().catch(() => {});
+    setRootReady(true);
+  }, [rootReady]);
+
+  const handleSplashFinish = useCallback(() => {
+    setShowAnimatedSplash(false);
   }, []);
 
   return (
     <ThemeProvider value={theme}>
-      <StatusBar style="light" />
+      <View style={{ flex: 1 }} onLayout={onRootLayout}>
+        <StatusBar style="light" />
 
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="verify-otp" />
-      </Stack>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="signup" />
+          <Stack.Screen name="login" />
+          <Stack.Screen name="verify-otp" />
+        </Stack>
+
+        {rootReady && showAnimatedSplash && (
+          <AnimatedSplashOverlay onFinish={handleSplashFinish} />
+        )}
+      </View>
     </ThemeProvider>
   );
 }

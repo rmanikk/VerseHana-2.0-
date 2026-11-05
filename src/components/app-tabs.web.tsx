@@ -1,8 +1,7 @@
+
 import { Link, Slot, usePathname } from "expo-router";
-import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { Colors, Spacing } from "@/constants/theme";
 
 const colors = Colors.dark;
@@ -17,15 +16,6 @@ const tabs = [
 
 export default function AppTabsWeb() {
   const pathname = usePathname();
-  const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 4500);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <View style={styles.container}>
@@ -62,14 +52,6 @@ export default function AppTabsWeb() {
       <View style={styles.content}>
         <Slot />
       </View>
-
-      {showSplash && (
-        <View style={styles.splashOverlay}>
-          <AnimatedSplashOverlay
-            onFinish={() => setShowSplash(false)}
-          />
-        </View>
-      )}
     </View>
   );
 }
@@ -126,15 +108,5 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
-  },
-
-  splashOverlay: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    zIndex: 999999,
-    elevation: 999999,
   },
 });
