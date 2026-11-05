@@ -1,3 +1,4 @@
+
 import * as SplashScreen from "expo-splash-screen";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -121,11 +122,11 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView
-  style={styles.safeArea}
-  onLayout={() => {
-    SplashScreen.hideAsync().catch(() => {});
-  }}
->
+      style={styles.safeArea}
+      onLayout={() => {
+        SplashScreen.hideAsync().catch(() => {});
+      }}
+    >
       <LinearGradient
         colors={["#061719", "#07191B", "#031011"]}
         locations={[0, 0.55, 1]}
@@ -147,7 +148,7 @@ export default function WelcomeScreen() {
         {/* BRAND LOGO */}
         <View style={styles.brandSection}>
           <Image
-            source={require("../../assets/images/splash-icon.png")}
+            source={require("../../assets/images/versehana-logo-transparent.png")}
             style={[
               styles.brandLogo,
               compact && styles.compactLogo,
@@ -155,10 +156,6 @@ export default function WelcomeScreen() {
             resizeMode="contain"
             accessibilityLabel="VerseHana logo"
           />
-
-          <Text style={styles.tagline}>
-            M U S I C   B E Y O N D   B O R D E R S
-          </Text>
         </View>
 
         {/* FLOATING FEATURE CARDS */}
@@ -427,7 +424,6 @@ export default function WelcomeScreen() {
             </Text>
           </Pressable>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -493,14 +489,6 @@ const styles = StyleSheet.create({
     height: 150,
     marginTop: -8,
     marginBottom: -17,
-  },
-
-  tagline: {
-    color: colors.cyan,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 2.2,
-    textAlign: "center",
   },
 
   // FLOATING CARDS
