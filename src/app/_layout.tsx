@@ -1,7 +1,12 @@
+
+import { useEffect } from "react";
 import { DarkTheme, Stack, ThemeProvider } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 
 import { Colors } from "@/constants/theme";
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const theme = {
   ...DarkTheme,
@@ -17,11 +22,16 @@ const theme = {
 };
 
 export default function RootLayout() {
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
   return (
     <ThemeProvider value={theme}>
       <StatusBar style="light" />
 
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="signup" />
         <Stack.Screen name="login" />
