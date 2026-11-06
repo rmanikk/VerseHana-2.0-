@@ -2,7 +2,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ElementRef } from "react";
 
 import {
   ActivityIndicator,
@@ -30,7 +30,7 @@ const RESEND_COOLDOWN = 60;
 export default function VerifyOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<ElementRef<typeof TextInput>>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   const [otp, setOtp] = useState("");
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   },
 
   hiddenInput: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.02,
     color: "transparent",
     backgroundColor: "transparent",
