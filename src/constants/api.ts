@@ -1,3 +1,4 @@
+
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 if (!API_BASE_URL) {
@@ -9,7 +10,14 @@ export const API = {
 
   auth: {
     signup: `${API_BASE_URL}/api/auth/signup`,
+    login: `${API_BASE_URL}/api/auth/login`,
     verifyEmail: `${API_BASE_URL}/api/auth/verify-email`,
     resendOtp: `${API_BASE_URL}/api/auth/resend-otp`,
+  },
+
+  oauth: {
+    google: `${API_BASE_URL}/api/oauth/google`,
+    facebook: `${API_BASE_URL}/api/oauth/facebook`,
+    completeSignup: `${API_BASE_URL}/api/oauth/complete-signup`,
   },
 };

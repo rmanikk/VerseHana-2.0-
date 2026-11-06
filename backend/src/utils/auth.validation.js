@@ -120,3 +120,15 @@ export const verifyEmailSchema = z.object({
     .trim()
     .regex(/^\d{6}$/, "Please enter a valid six-digit verification code."),
 });
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Please enter a valid email address.")
+    .max(255, "Email is too long."),
+
+  password: z
+    .string()
+    .min(1, "Password is required.")
+    .max(128, "Invalid email or password."),
+});

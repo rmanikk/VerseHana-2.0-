@@ -1,10 +1,12 @@
+
 import express from "express";
 import rateLimit from "express-rate-limit";
 
 import {
-    resendOtp,
-    signup,
-    verifyEmail,
+  resendOtp,
+  signup,
+  login,
+  verifyEmail,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
@@ -12,6 +14,13 @@ const router = express.Router();
 const signupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
 });
@@ -31,6 +40,7 @@ const resendLimiter = rateLimit({
 });
 
 router.post("/signup", signupLimiter, signup);
+router.post("/login", loginLimiter, login);
 router.post("/verify-email", verifyLimiter, verifyEmail);
 router.post("/resend-otp", resendLimiter, resendOtp);
 

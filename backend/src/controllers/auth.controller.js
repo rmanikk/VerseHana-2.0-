@@ -1,10 +1,16 @@
+
 import {
   signupSchema,
+  loginSchema,
   resendOtpSchema,
   verifyEmailSchema,
 } from "../utils/auth.validation.js";
 
-import { registerUser } from "../services/auth.service.js";
+import {
+  registerUser,
+  authenticateUser,
+} from "../services/auth.service.js";
+
 import { issueAuthTokens } from "../services/token.service.js";
 
 import {
@@ -39,7 +45,7 @@ export const signup = async (req, res, next) => {
         success: false,
         accountCreated: true,
         message:
-          "Your account was created, but we couldn't send the verification email. Please try requesting a new code.",
+          "Your account was created, but we couldn't send the verification email. Please request a new code.",
       });
     }
 
@@ -48,6 +54,31 @@ export const signup = async (req, res, next) => {
       message:
         "Account created. Check your email for the verification code.",
       user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const login = async (req, res, next) => {
+  try {
+    const validation = loginSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        message: validation.error.issues[0].message,
+      });
+    }
+
+    const user = await authenticateUser(validation.data);
+    const tokens = await issueAuthTokens(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      user,
+      ...tokens,
     });
   } catch (error) {
     next(error);
@@ -67,7 +98,7 @@ export const verifyEmail = async (req, res, next) => {
 
     const user = await verifyUserOtp(
       validation.data.email,
-      validation.data.otp
+      validation.data.otp,
     );
 
     const tokens = await issueAuthTokens(user);
@@ -83,7 +114,6 @@ export const verifyEmail = async (req, res, next) => {
   }
 };
 
-
 export const resendOtp = async (req, res, next) => {
   try {
     const validation = resendOtpSchema.safeParse(req.body);
@@ -96,7 +126,6 @@ export const resendOtp = async (req, res, next) => {
     }
 
     const email = validation.data.email.toLowerCase();
-
     const result = await resendUserOtp(email);
 
     if (result.cooldown) {
