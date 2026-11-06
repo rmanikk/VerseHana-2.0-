@@ -23,6 +23,74 @@ import { API } from "@/constants/api";
 
 const colors = Colors.dark;
 
+// Keep this list synchronized with backend validation.
+const BLOCKED_USERNAME_TERMS = [
+  "admin",
+  "moderator",
+  "support",
+  "fuck",
+  "shit",
+  "bitch",
+  "asshole",
+  "bastard",
+  "slut",
+  "whore",
+];
+
+function normalizeUsernameForModeration(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[0]/g, "o")
+    .replace(/[1!|]/g, "i")
+    .replace(/[3]/g, "e")
+    .replace(/[4@]/g, "a")
+    .replace(/[5$]/g, "s")
+    .replace(/[7]/g, "t")
+    .replace(/[^a-z]/g, "")
+    .replace(/(.)\1+/g, "$1");
+}
+
+function getUsernameError(value: string): string | undefined {
+  const username = value.trim().toLowerCase();
+
+  if (username.length < 3) {
+    return "Username must have at least 3 characters.";
+  }
+
+  if (username.length > 20) {
+    return "Username cannot exceed 20 characters.";
+  }
+
+  if (!/^[a-z][a-z0-9_]*$/.test(username)) {
+    return "Start with a letter; use only letters, numbers and underscores.";
+  }
+
+  if (username.includes("__")) {
+    return "Avoid consecutive underscores.";
+  }
+
+  const normalized = normalizeUsernameForModeration(username);
+
+  const parts = username.split(/[_\d]+/).filter(Boolean);
+
+  const isBlocked = BLOCKED_USERNAME_TERMS.some((term) =>
+    normalized.includes(normalizeUsernameForModeration(term)) ||
+    parts.some(
+      (part) =>
+        normalizeUsernameForModeration(part) ===
+        normalizeUsernameForModeration(term),
+    ),
+  );
+
+  if (isBlocked) {
+    return "Please choose a different username.";
+  }
+
+  return undefined;
+}
+
 type FormErrors = {
   fullName?: string;
   username?: string;
@@ -44,7 +112,12 @@ type FieldProps = {
   onTogglePassword?: () => void;
   keyboardType?: "default" | "email-address";
   autoCapitalize?: "none" | "words" | "sentences";
-  autoComplete?: "name" | "username" | "email" | "password" | "new-password";
+  autoComplete?:
+    | "name"
+    | "username"
+    | "email"
+    | "password"
+    | "new-password";
 };
 
 function FormField({
@@ -74,7 +147,7 @@ function FormField({
       >
         <Ionicons
           name={icon}
-          size={25}
+          size={21}
           color={colors.primary}
           style={styles.fieldIcon}
         />
@@ -114,7 +187,9 @@ function FormField({
         )}
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : null}
     </View>
   );
 }
@@ -127,7 +202,8 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -146,15 +222,19 @@ export default function SignupScreen() {
       case "fullName":
         setFullName(value);
         break;
+
       case "username":
         setUsername(value);
         break;
+
       case "email":
         setEmail(value);
         break;
+
       case "password":
         setPassword(value);
         break;
+
       case "confirmPassword":
         setConfirmPassword(value);
         break;
@@ -168,35 +248,50 @@ export default function SignupScreen() {
     const normalizedUsername = username.trim();
     const normalizedEmail = email.trim();
 
+    // Full name validation
     if (normalizedName.length < 2) {
       nextErrors.fullName = "Please enter your full name.";
     } else if (normalizedName.length > 100) {
       nextErrors.fullName = "Full name is too long.";
+    } else if (
+      !/^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$/u.test(
+        normalizedName,
+      )
+    ) {
+      nextErrors.fullName =
+        "Use letters, spaces, apostrophes or hyphens only.";
     }
 
-    if (normalizedUsername.length < 3) {
-      nextErrors.username = "Username must have at least 3 characters.";
-    } else if (normalizedUsername.length > 20) {
-      nextErrors.username = "Username cannot exceed 20 characters.";
-    } else if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
-      nextErrors.username =
-        "Use only letters, numbers and underscores.";
+    // Username validation
+    const usernameError = getUsernameError(normalizedUsername);
+
+    if (usernameError) {
+      nextErrors.username = usernameError;
     }
 
+    // Email validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       nextErrors.email = "Please enter a valid email address.";
     } else if (normalizedEmail.length > 255) {
       nextErrors.email = "Email address is too long.";
     }
 
+    // Password validation
     if (password.length < 8) {
-      nextErrors.password = "Password must contain at least 8 characters.";
+      nextErrors.password =
+        "Password must contain at least 8 characters.";
     } else if (password.length > 128) {
-      nextErrors.password = "Password cannot exceed 128 characters.";
+      nextErrors.password =
+        "Password cannot exceed 128 characters.";
+    } else if (!/(?=.*[A-Za-z])(?=.*\d)/.test(password)) {
+      nextErrors.password =
+        "Include at least one letter and one number.";
     }
 
+    // Confirm password validation
     if (confirmPassword.length === 0) {
-      nextErrors.confirmPassword = "Please confirm your password.";
+      nextErrors.confirmPassword =
+        "Please confirm your password.";
     } else if (password !== confirmPassword) {
       nextErrors.confirmPassword = "Passwords do not match.";
     }
@@ -230,7 +325,7 @@ export default function SignupScreen() {
 
       const data = await response.json();
 
-      // The backend can create the account even if email delivery fails.
+      // Account may have been created even if OTP delivery failed.
       if (response.ok || data.accountCreated === true) {
         router.push({
           pathname: "/verify-otp",
@@ -242,16 +337,19 @@ export default function SignupScreen() {
         return;
       }
 
-      // Display backend validation errors beside their fields.
+      // Backend validation errors
       if (Array.isArray(data.errors)) {
         const serverErrors: FormErrors = {};
 
         data.errors.forEach(
           (item: { field: string; message: string }) => {
             if (
-              ["fullName", "username", "email", "password"].includes(
-                item.field,
-              )
+              [
+                "fullName",
+                "username",
+                "email",
+                "password",
+              ].includes(item.field)
             ) {
               serverErrors[item.field as keyof FormErrors] =
                 item.message;
@@ -263,12 +361,14 @@ export default function SignupScreen() {
           setErrors(serverErrors);
         } else {
           setErrors({
-            general: data.message || "Unable to create your account.",
+            general:
+              data.message || "Unable to create your account.",
           });
         }
       } else {
         setErrors({
-          general: data.message || "Unable to create your account.",
+          general:
+            data.message || "Unable to create your account.",
         });
       }
     } catch (error) {
@@ -284,7 +384,10 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={styles.safeArea}
+      edges={["top", "bottom"]}
+    >
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -297,23 +400,21 @@ export default function SignupScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Brand */}
+          {/* Transparent brand logo */}
           <View style={styles.brandContainer}>
             <Image
-              source={require("../../assets/images/splash-icon.png")}
+              source={require("../../assets/images/versehana-logo-transparent.png")}
               style={styles.logo}
               resizeMode="contain"
+              accessibilityLabel="VerseHana"
             />
-
-            <Text style={styles.brandText}>
-              VERSE<Text style={styles.brandAccent}>HANA</Text>
-            </Text>
           </View>
 
           {/* Heading */}
           <View style={styles.headingContainer}>
             <Text style={styles.heading}>
-              Create <Text style={styles.headingAccent}>Account</Text>
+              Create{" "}
+              <Text style={styles.headingAccent}>Account</Text>
             </Text>
 
             <Text style={styles.subtitle}>
@@ -321,13 +422,15 @@ export default function SignupScreen() {
             </Text>
           </View>
 
-          {/* Form */}
+          {/* Signup form */}
           <View style={styles.form}>
             <FormField
               icon="person-outline"
               placeholder="Full Name"
               value={fullName}
-              onChangeText={(value) => updateField("fullName", value)}
+              onChangeText={(value) =>
+                updateField("fullName", value)
+              }
               error={errors.fullName}
               autoCapitalize="words"
               autoComplete="name"
@@ -337,7 +440,9 @@ export default function SignupScreen() {
               icon="person-outline"
               placeholder="Username"
               value={username}
-              onChangeText={(value) => updateField("username", value)}
+              onChangeText={(value) =>
+                updateField("username", value)
+              }
               error={errors.username}
               autoComplete="username"
             />
@@ -346,7 +451,9 @@ export default function SignupScreen() {
               icon="mail-outline"
               placeholder="Email Address"
               value={email}
-              onChangeText={(value) => updateField("email", value)}
+              onChangeText={(value) =>
+                updateField("email", value)
+              }
               error={errors.email}
               keyboardType="email-address"
               autoComplete="email"
@@ -356,12 +463,16 @@ export default function SignupScreen() {
               icon="lock-closed-outline"
               placeholder="Password"
               value={password}
-              onChangeText={(value) => updateField("password", value)}
+              onChangeText={(value) =>
+                updateField("password", value)
+              }
               error={errors.password}
               secureTextEntry={!showPassword}
               showToggle
               showPassword={showPassword}
-              onTogglePassword={() => setShowPassword(!showPassword)}
+              onTogglePassword={() =>
+                setShowPassword(!showPassword)
+              }
               autoComplete="new-password"
             />
 
@@ -395,7 +506,7 @@ export default function SignupScreen() {
               </View>
             ) : null}
 
-            {/* Create Account */}
+            {/* Create account button */}
             <Pressable
               onPress={handleSignup}
               disabled={loading}
@@ -424,45 +535,59 @@ export default function SignupScreen() {
             </Pressable>
           </View>
 
-          {/* Divider */}
+          {/* Social divider */}
           <View style={styles.dividerContainer}>
             <View style={styles.divider} />
-            <Text style={styles.orText}>or</Text>
+
+            <Text style={styles.orText}>
+              Or continue with
+            </Text>
+
             <View style={styles.divider} />
           </View>
 
-          {/* Social Login - OAuth integration comes later */}
+          {/* Social signup buttons */}
           <View style={styles.socialContainer}>
             <Pressable
               style={styles.socialButton}
               onPress={() =>
                 setErrors({
-                  general: "Google sign-in will be available soon.",
+                  general:
+                    "Google sign-in will be available soon.",
                 })
               }
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Google"
             >
-              <Ionicons name="logo-google" size={25} color="#DB4437" />
-              <Text style={styles.socialText}>
-                Continue with Google
-              </Text>
+              <Ionicons
+                name="logo-google"
+                size={22}
+                color="#DB4437"
+              />
+              <Text style={styles.socialText}>Google</Text>
             </Pressable>
 
             <Pressable
               style={styles.socialButton}
               onPress={() =>
                 setErrors({
-                  general: "Facebook sign-in will be available soon.",
+                  general:
+                    "Facebook sign-in will be available soon.",
                 })
               }
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Facebook"
             >
-              <Ionicons name="logo-facebook" size={25} color="#1877F2" />
-              <Text style={styles.socialText}>
-                Continue with Facebook
-              </Text>
+              <Ionicons
+                name="logo-facebook"
+                size={22}
+                color="#1877F2"
+              />
+              <Text style={styles.socialText}>Facebook</Text>
             </Pressable>
           </View>
 
-          {/* Sign In */}
+          {/* Login navigation */}
           <View style={styles.signinContainer}>
             <Text style={styles.signinText}>
               Already have an account?
@@ -490,9 +615,9 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 25,
-    paddingTop: 30,
-    paddingBottom: 30,
+    paddingHorizontal: 22,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
 
   topGlow: {
@@ -521,35 +646,23 @@ const styles = StyleSheet.create({
 
   brandContainer: {
     alignItems: "center",
-    marginTop: 15,
-    marginBottom: 48,
+    marginTop: 4,
+    marginBottom: 18,
   },
 
   logo: {
-    width: 170,
-    height: 170,
-  },
-
-  brandText: {
-    color: "#F2FAF9",
-    fontSize: 24,
-    fontWeight: "400",
-    letterSpacing: 9,
-    marginTop: -5,
-  },
-
-  brandAccent: {
-    color: colors.primary,
+    width: 116,
+    height: 116,
   },
 
   headingContainer: {
     alignItems: "center",
-    marginBottom: 27,
+    marginBottom: 20,
   },
 
   heading: {
     color: "#F7FAFA",
-    fontSize: 34,
+    fontSize: 29,
     fontWeight: "800",
     letterSpacing: -1,
   },
@@ -560,13 +673,13 @@ const styles = StyleSheet.create({
 
   subtitle: {
     color: colors.textSecondary,
-    fontSize: 15,
+    fontSize: 13,
     textAlign: "center",
     marginTop: 7,
   },
 
   form: {
-    gap: 13,
+    gap: 10,
   },
 
   fieldWrapper: {
@@ -574,13 +687,13 @@ const styles = StyleSheet.create({
   },
 
   inputContainer: {
-    height: 66,
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.4,
     borderColor: "#293C3E",
-    borderRadius: 40,
-    paddingHorizontal: 20,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     backgroundColor: "rgba(9, 17, 18, 0.82)",
   },
 
@@ -593,15 +706,15 @@ const styles = StyleSheet.create({
   },
 
   fieldIcon: {
-    width: 38,
+    width: 30,
   },
 
   input: {
     flex: 1,
     height: "100%",
     color: colors.text,
-    fontSize: 16,
-    paddingHorizontal: 10,
+    fontSize: 14,
+    paddingHorizontal: 8,
   },
 
   errorText: {
@@ -631,14 +744,14 @@ const styles = StyleSheet.create({
   },
 
   submitGradient: {
-    height: 66,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
   },
 
   submitText: {
     color: "#031718",
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: "800",
   },
 
@@ -654,8 +767,8 @@ const styles = StyleSheet.create({
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 17,
-    marginVertical: 28,
+    gap: 12,
+    marginVertical: 18,
     paddingHorizontal: 15,
   },
 
@@ -667,30 +780,32 @@ const styles = StyleSheet.create({
 
   orText: {
     color: colors.textSecondary,
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
   },
 
   socialContainer: {
-    gap: 13,
+    flexDirection: "row",
+    gap: 12,
   },
 
   socialButton: {
-    height: 62,
-    borderRadius: 40,
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
     borderWidth: 1.4,
     borderColor: "#34494B",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 19,
+    gap: 10,
     backgroundColor: "rgba(9, 17, 18, 0.7)",
   },
 
   socialText: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: "500",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   signinContainer: {
@@ -698,7 +813,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    marginTop: 38,
+    marginTop: 26,
   },
 
   signinText: {

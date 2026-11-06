@@ -1,9 +1,11 @@
 import {
   signupSchema,
   resendOtpSchema,
+  verifyEmailSchema,
 } from "../utils/auth.validation.js";
 
 import { registerUser } from "../services/auth.service.js";
+import { issueAuthTokens } from "../services/token.service.js";
 
 import {
   createAndSendOtp,
@@ -54,32 +56,33 @@ export const signup = async (req, res, next) => {
 
 export const verifyEmail = async (req, res, next) => {
   try {
-    const email = req.body.email?.trim().toLowerCase();
-    const otp = req.body.otp?.trim();
+    const validation = verifyEmailSchema.safeParse(req.body);
 
-    if (
-      typeof email !== "string" ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      typeof otp !== "string" ||
-      !/^\d{6}$/.test(otp)
-    ) {
+    if (!validation.success) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a valid email and six-digit code.",
+        message: validation.error.issues[0].message,
       });
     }
 
-    const user = await verifyUserOtp(email, otp);
+    const user = await verifyUserOtp(
+      validation.data.email,
+      validation.data.otp
+    );
+
+    const tokens = await issueAuthTokens(user);
 
     return res.status(200).json({
       success: true,
       message: "Email verified successfully.",
       user,
+      ...tokens,
     });
   } catch (error) {
     next(error);
   }
 };
+
 
 export const resendOtp = async (req, res, next) => {
   try {

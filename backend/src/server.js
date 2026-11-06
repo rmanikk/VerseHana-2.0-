@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 
 import healthRoutes from "./routes/health.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import oauthRoutes from "./routes/oauth.routes.js";
 
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
@@ -49,6 +50,7 @@ app.get("/", (req, res) => {
 // API routes
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/oauth", oauthRoutes);
 
 // Error handling
 app.use(notFound);
