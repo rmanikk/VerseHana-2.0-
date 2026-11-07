@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "@/constants/theme";
 import { API } from "@/constants/api";
+import { useSocialAuth } from "@/hooks/use-social-auth";
 
 const colors = Colors.dark;
 
@@ -208,6 +209,14 @@ export default function SignupScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
+  const {
+    signInWithProvider,
+    loadingProvider,
+    error: socialError,
+  } = useSocialAuth();
+
+  const isBusy = loading || loadingProvider !== null;
+
   const updateField = (
     field: keyof FormErrors,
     value: string,
@@ -302,7 +311,7 @@ export default function SignupScreen() {
   };
 
   const handleSignup = async () => {
-    if (loading) return;
+    if (isBusy) return;
 
     if (!validateForm()) return;
 
@@ -493,7 +502,7 @@ export default function SignupScreen() {
               autoComplete="new-password"
             />
 
-            {errors.general ? (
+            {(errors.general || socialError) ? (
               <View style={styles.generalError}>
                 <Ionicons
                   name="alert-circle-outline"
@@ -501,7 +510,7 @@ export default function SignupScreen() {
                   color={colors.error}
                 />
                 <Text style={styles.generalErrorText}>
-                  {errors.general}
+                  {errors.general || socialError}
                 </Text>
               </View>
             ) : null}
@@ -509,13 +518,13 @@ export default function SignupScreen() {
             {/* Create account button */}
             <Pressable
               onPress={handleSignup}
-              disabled={loading}
+              disabled={isBusy}
               accessibilityRole="button"
               accessibilityLabel="Create Account"
               style={({ pressed }) => [
                 styles.submitButton,
-                pressed && !loading && styles.buttonPressed,
-                loading && styles.buttonDisabled,
+                pressed && !isBusy && styles.buttonPressed,
+                isBusy && styles.buttonDisabled,
               ]}
             >
               <LinearGradient
@@ -549,34 +558,40 @@ export default function SignupScreen() {
           {/* Social signup buttons */}
           <View style={styles.socialContainer}>
             <Pressable
-              style={styles.socialButton}
-              onPress={() =>
-                setErrors({
-                  general:
-                    "Google sign-in will be available soon.",
-                })
-              }
+              style={[
+                styles.socialButton,
+                isBusy && styles.buttonDisabled,
+              ]}
+              disabled={isBusy}
+              onPress={() => {
+                setErrors({});
+                signInWithProvider("google");
+              }}
               accessibilityRole="button"
               accessibilityLabel="Continue with Google"
             >
-              <Ionicons
-                name="logo-google"
-                size={22}
-                color="#DB4437"
-              />
-              <Text style={styles.socialText}>Google</Text>
+              {loadingProvider === "google" ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <>
+                  <Ionicons
+                    name="logo-google"
+                    size={22}
+                    color="#DB4437"
+                  />
+                  <Text style={styles.socialText}>Google</Text>
+                </>
+              )}
             </Pressable>
 
             <Pressable
-              style={styles.socialButton}
-              onPress={() =>
-                setErrors({
-                  general:
-                    "Facebook sign-in will be available soon.",
-                })
-              }
+              style={[
+                styles.socialButton,
+                styles.buttonDisabled,
+              ]}
+              disabled
               accessibilityRole="button"
-              accessibilityLabel="Continue with Facebook"
+              accessibilityLabel="Facebook sign-in unavailable"
             >
               <Ionicons
                 name="logo-facebook"
@@ -593,7 +608,10 @@ export default function SignupScreen() {
               Already have an account?
             </Text>
 
-            <Pressable onPress={() => router.push("/login")}>
+            <Pressable
+              onPress={() => router.push("/login")}
+              disabled={isBusy}
+            >
               <Text style={styles.signinLink}>Sign In</Text>
             </Pressable>
           </View>

@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "@/constants/theme";
 import { API } from "@/constants/api";
 import { authStorage } from "@/services/auth-storage";
+import { useSocialAuth } from "@/hooks/use-social-auth";
 
 const colors = Colors.dark;
 
@@ -36,8 +37,16 @@ export default function LoginScreen() {
     "email" | "password" | null
   >(null);
 
+  const {
+    signInWithProvider,
+    loadingProvider,
+    error: socialError,
+  } = useSocialAuth();
+
+  const isBusy = loading || loadingProvider !== null;
+
   const handleLogin = async () => {
-    if (loading) return;
+    if (isBusy) return;
 
     setError("");
 
@@ -171,7 +180,7 @@ export default function LoginScreen() {
                   autoComplete="email"
                   onFocus={() => setFocusedField("email")}
                   onBlur={() => setFocusedField(null)}
-                  editable={!loading}
+                  editable={!isBusy}
                   returnKeyType="next"
                 />
               </View>
@@ -204,7 +213,7 @@ export default function LoginScreen() {
                   autoComplete="current-password"
                   onFocus={() => setFocusedField("password")}
                   onBlur={() => setFocusedField(null)}
-                  editable={!loading}
+                  editable={!isBusy}
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
                 />
@@ -230,7 +239,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {error ? (
+            {(error || socialError) ? (
               <View style={styles.generalError}>
                 <Ionicons
                   name="alert-circle-outline"
@@ -238,20 +247,20 @@ export default function LoginScreen() {
                   color={colors.error}
                 />
                 <Text style={styles.generalErrorText}>
-                  {error}
+                  {error || socialError}
                 </Text>
               </View>
             ) : null}
 
             <Pressable
               onPress={handleLogin}
-              disabled={loading}
+              disabled={isBusy}
               accessibilityRole="button"
               accessibilityLabel="Sign In"
               style={({ pressed }) => [
                 styles.submitButton,
-                pressed && !loading && styles.buttonPressed,
-                loading && styles.buttonDisabled,
+                pressed && !isBusy && styles.buttonPressed,
+                isBusy && styles.buttonDisabled,
               ]}
             >
               <LinearGradient
@@ -277,26 +286,39 @@ export default function LoginScreen() {
             <View style={styles.divider} />
           </View>
 
+          {/* Social Login */}
           <View style={styles.socialContainer}>
             <Pressable
-              style={styles.socialButton}
-              onPress={() =>
-                setError("Google sign-in integration is coming next.")
-              }
+              style={[
+                styles.socialButton,
+                isBusy && styles.buttonDisabled,
+              ]}
+              disabled={isBusy}
+              onPress={() => {
+                setError("");
+                signInWithProvider("google");
+              }}
             >
-              <Ionicons
-                name="logo-google"
-                size={22}
-                color="#DB4437"
-              />
-              <Text style={styles.socialText}>Google</Text>
+              {loadingProvider === "google" ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <>
+                  <Ionicons
+                    name="logo-google"
+                    size={22}
+                    color="#DB4437"
+                  />
+                  <Text style={styles.socialText}>Google</Text>
+                </>
+              )}
             </Pressable>
 
             <Pressable
-              style={styles.socialButton}
-              onPress={() =>
-                setError("Facebook sign-in integration is coming next.")
-              }
+              style={[
+                styles.socialButton,
+                styles.buttonDisabled,
+              ]}
+              disabled
             >
               <Ionicons
                 name="logo-facebook"
@@ -312,7 +334,10 @@ export default function LoginScreen() {
               Don't have an account?
             </Text>
 
-            <Pressable onPress={() => router.push("/signup")}>
+            <Pressable
+              onPress={() => router.push("/signup")}
+              disabled={isBusy}
+            >
               <Text style={styles.signupLink}>Create Account</Text>
             </Pressable>
           </View>

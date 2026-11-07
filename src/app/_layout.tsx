@@ -49,6 +49,7 @@ export default function RootLayout() {
           <Stack.Screen name="signup" />
           <Stack.Screen name="login" />
           <Stack.Screen name="verify-otp" />
+          <Stack.Screen name="choose-username" />
         </Stack>
 
         {rootReady && showAnimatedSplash && (
