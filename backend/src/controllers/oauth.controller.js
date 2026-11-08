@@ -20,11 +20,30 @@ import {
 // ------------------------------------------
 
 function sendError(res, error) {
-  console.error("OAuth error:", error);
+  console.error("OAuth error:", {
+    message: error.message,
+    code: error.code,
+  });
 
-  return res.status(error.statusCode || 500).json({
+  // Handle database uniqueness conflicts.
+  if (error.code === "23505") {
+    return res.status(409).json({
+      success: false,
+      message: "An account with these details already exists.",
+    });
+  }
+
+  const statusCode =
+    error.statusCode && error.statusCode < 500
+      ? error.statusCode
+      : 500;
+
+  return res.status(statusCode).json({
     success: false,
-    message: error.message || "Authentication failed.",
+    message:
+      statusCode === 500
+        ? "Authentication failed. Please try again."
+        : error.message,
   });
 }
 

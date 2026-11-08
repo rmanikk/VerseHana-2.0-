@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { router } from "expo-router";
+
 import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
+
+import {
+  AccessToken,
+  LoginManager,
+} from "react-native-fbsdk-next";
 
 import { authenticateWithOAuth } from "@/services/oauth-auth";
 
@@ -21,11 +27,6 @@ export function useSocialAuth() {
 
   const signInWithProvider = async (
     provider: OAuthProvider,
-    providerToken?: string,
-    profile?: {
-      fullName?: string;
-      email?: string | null;
-    },
   ) => {
     if (loadingProvider) return;
 
@@ -33,36 +34,59 @@ export function useSocialAuth() {
     setLoadingProvider(provider);
 
     try {
-      let token = providerToken;
-      let userProfile = profile;
+      let token: string | undefined;
+      let fullName = "";
 
       if (provider === "google") {
         await GoogleSignin.hasPlayServices({
           showPlayServicesUpdateDialog: true,
         });
 
-        const result = await GoogleSignin.signIn();
+        const googleResult = await GoogleSignin.signIn();
 
-        if (result.type === "cancelled") {
+        if (googleResult.type === "cancelled") {
           return;
         }
 
-        token = result.data.idToken ?? undefined;
-        userProfile = {
-          fullName: result.data.user.name ?? "",
-          email: result.data.user.email ?? null,
-        };
+        token = googleResult.data.idToken ?? undefined;
+        fullName = googleResult.data.user.name ?? "";
 
         if (!token) {
           throw new Error("Google did not return an ID token.");
         }
       }
 
+      if (provider === "facebook") {
+        const loginResult =
+          await LoginManager.logInWithPermissions([
+            "public_profile",
+            "email",
+          ]);
+
+        if (loginResult.isCancelled) {
+          return;
+        }
+
+        const facebookToken =
+          await AccessToken.getCurrentAccessToken();
+
+        if (!facebookToken?.accessToken) {
+          throw new Error(
+            "Facebook did not return an access token.",
+          );
+        }
+
+        token = facebookToken.accessToken;
+      }
+
       if (!token) {
         throw new Error("Authentication token is missing.");
       }
 
-      const result = await authenticateWithOAuth(provider, token);
+      const result = await authenticateWithOAuth(
+        provider,
+        token,
+      );
 
       if (result.type === "existing-user") {
         router.replace("/(tabs)");
@@ -74,9 +98,7 @@ export function useSocialAuth() {
         params: {
           onboardingToken: result.onboardingToken,
           fullName:
-            userProfile?.fullName ||
-            result.profile.fullName ||
-            "",
+            fullName || result.profile.fullName || "",
           provider,
         },
       });
@@ -90,7 +112,10 @@ export function useSocialAuth() {
         return;
       }
 
-      console.error(`${provider} authentication error:`, err);
+      console.error(
+        `${provider} authentication error:`,
+        err,
+      );
 
       setError(
         err instanceof Error

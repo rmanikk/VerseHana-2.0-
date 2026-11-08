@@ -13,6 +13,10 @@ export const API = {
     login: `${API_BASE_URL}/api/auth/login`,
     verifyEmail: `${API_BASE_URL}/api/auth/verify-email`,
     resendOtp: `${API_BASE_URL}/api/auth/resend-otp`,
+
+    refresh: `${API_BASE_URL}/api/auth/refresh`,
+    logout: `${API_BASE_URL}/api/auth/logout`,
+    me: `${API_BASE_URL}/api/auth/me`,
   },
 
   oauth: {

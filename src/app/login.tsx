@@ -28,7 +28,6 @@ const colors = Colors.dark;
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -87,22 +86,20 @@ export default function LoginScreen() {
         if (data.code === "EMAIL_NOT_VERIFIED") {
           router.push({
             pathname: "/verify-otp",
-            params: {
-              email: normalizedEmail,
-            },
+            params: { email: normalizedEmail },
           });
           return;
         }
 
         setError(
-          data.message || "Unable to sign in. Please try again.",
+          data.message || "Unable to sign in. Please try again."
         );
         return;
       }
 
       await authStorage.saveTokens(
         data.accessToken,
-        data.refreshToken,
+        data.refreshToken
       );
 
       router.replace("/(tabs)");
@@ -110,7 +107,7 @@ export default function LoginScreen() {
       console.error("Login error:", err);
 
       setError(
-        "Unable to connect to VerseHana. Please check your internet or server connection.",
+        "Unable to connect to VerseHana. Please check your internet or server connection."
       );
     } finally {
       setLoading(false);
@@ -118,10 +115,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={styles.safeArea}
-      edges={["top", "bottom"]}
-    >
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -153,7 +147,6 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            {/* Email */}
             <View style={styles.fieldWrapper}>
               <View
                 style={[
@@ -186,13 +179,11 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            {/* Password */}
             <View style={styles.fieldWrapper}>
               <View
                 style={[
                   styles.inputContainer,
-                  focusedField === "password" &&
-                    styles.inputFocused,
+                  focusedField === "password" && styles.inputFocused,
                 ]}
               >
                 <Ionicons
@@ -272,9 +263,7 @@ export default function LoginScreen() {
                 {loading ? (
                   <ActivityIndicator color="#06181B" />
                 ) : (
-                  <Text style={styles.submitText}>
-                    Sign In
-                  </Text>
+                  <Text style={styles.submitText}>Sign In</Text>
                 )}
               </LinearGradient>
             </Pressable>
@@ -286,7 +275,6 @@ export default function LoginScreen() {
             <View style={styles.divider} />
           </View>
 
-          {/* Social Login */}
           <View style={styles.socialContainer}>
             <Pressable
               style={[
@@ -316,16 +304,26 @@ export default function LoginScreen() {
             <Pressable
               style={[
                 styles.socialButton,
-                styles.buttonDisabled,
+                isBusy && styles.buttonDisabled,
               ]}
-              disabled
+              disabled={isBusy}
+              onPress={() => {
+                setError("");
+                signInWithProvider("facebook");
+              }}
             >
-              <Ionicons
-                name="logo-facebook"
-                size={22}
-                color="#1877F2"
-              />
-              <Text style={styles.socialText}>Facebook</Text>
+              {loadingProvider === "facebook" ? (
+                <ActivityIndicator color="#1877F2" />
+              ) : (
+                <>
+                  <Ionicons
+                    name="logo-facebook"
+                    size={22}
+                    color="#1877F2"
+                  />
+                  <Text style={styles.socialText}>Facebook</Text>
+                </>
+              )}
             </Pressable>
           </View>
 
@@ -352,11 +350,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#030707",
   },
-
   keyboardContainer: {
     flex: 1,
   },
-
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
@@ -364,7 +360,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 28,
   },
-
   topGlow: {
     position: "absolute",
     top: -160,
@@ -376,7 +371,6 @@ const styles = StyleSheet.create({
     borderColor: "#087B80",
     opacity: 0.35,
   },
-
   bottomGlow: {
     position: "absolute",
     bottom: -180,
@@ -388,48 +382,39 @@ const styles = StyleSheet.create({
     borderColor: "#087B80",
     opacity: 0.3,
   },
-
   brandContainer: {
     alignItems: "center",
     marginBottom: 16,
   },
-
   logo: {
     width: 116,
     height: 116,
   },
-
   headingContainer: {
     alignItems: "center",
     marginBottom: 30,
   },
-
   heading: {
     color: "#F7FAFA",
     fontSize: 30,
     fontWeight: "800",
     letterSpacing: -1,
   },
-
   headingAccent: {
     color: colors.primary,
   },
-
   subtitle: {
     color: colors.textSecondary,
     fontSize: 13,
     textAlign: "center",
     marginTop: 8,
   },
-
   form: {
     gap: 14,
   },
-
   fieldWrapper: {
     width: "100%",
   },
-
   inputContainer: {
     height: 56,
     flexDirection: "row",
@@ -440,15 +425,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: "rgba(9, 17, 18, 0.82)",
   },
-
   inputFocused: {
     borderColor: colors.primary,
   },
-
   fieldIcon: {
     width: 30,
   },
-
   input: {
     flex: 1,
     height: "100%",
@@ -456,47 +438,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingHorizontal: 8,
   },
-
   generalError: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 8,
   },
-
   generalErrorText: {
     color: colors.error,
     fontSize: 13,
     flex: 1,
   },
-
   submitButton: {
     marginTop: 8,
     borderRadius: 40,
     overflow: "hidden",
   },
-
   submitGradient: {
     height: 56,
     alignItems: "center",
     justifyContent: "center",
   },
-
   submitText: {
     color: "#031718",
     fontSize: 17,
     fontWeight: "800",
   },
-
   buttonPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.99 }],
   },
-
   buttonDisabled: {
     opacity: 0.7,
   },
-
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -504,24 +478,20 @@ const styles = StyleSheet.create({
     marginVertical: 22,
     paddingHorizontal: 15,
   },
-
   divider: {
     flex: 1,
     height: 1,
     backgroundColor: "#304344",
   },
-
   orText: {
     color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
-
   socialContainer: {
     flexDirection: "row",
     gap: 12,
   },
-
   socialButton: {
     flex: 1,
     height: 52,
@@ -534,13 +504,11 @@ const styles = StyleSheet.create({
     gap: 10,
     backgroundColor: "rgba(9, 17, 18, 0.7)",
   },
-
   socialText: {
     color: colors.text,
     fontSize: 14,
     fontWeight: "600",
   },
-
   signupContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -548,12 +516,10 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 30,
   },
-
   signupText: {
     color: colors.textSecondary,
     fontSize: 14,
   },
-
   signupLink: {
     color: colors.primary,
     fontSize: 15,

@@ -137,11 +137,11 @@ export async function verifyFacebookIdentity(accessToken) {
     throw createAuthError("Facebook account information is incomplete.");
   }
 
- return {
-  provider: "facebook",
-  providerId: profile.id,
-  email: null,
-  emailVerified: false,
-  fullName: profile.name?.trim() || "Facebook User",
+  return {
+    provider: "facebook",
+    providerId: profile.id,
+    email: profile.email?.toLowerCase().trim() || null,
+    emailVerified: false,
+    fullName: profile.name?.trim() || "Facebook User",
+  }
 };
-}

@@ -73,7 +73,6 @@ function getUsernameError(value: string): string | undefined {
   }
 
   const normalized = normalizeUsernameForModeration(username);
-
   const parts = username.split(/[_\d]+/).filter(Boolean);
 
   const isBlocked = BLOCKED_USERNAME_TERMS.some((term) =>
@@ -557,6 +556,7 @@ export default function SignupScreen() {
 
           {/* Social signup buttons */}
           <View style={styles.socialContainer}>
+            {/* Google */}
             <Pressable
               style={[
                 styles.socialButton,
@@ -584,21 +584,32 @@ export default function SignupScreen() {
               )}
             </Pressable>
 
+            {/* Facebook */}
             <Pressable
               style={[
                 styles.socialButton,
-                styles.buttonDisabled,
+                isBusy && styles.buttonDisabled,
               ]}
-              disabled
+              disabled={isBusy}
+              onPress={() => {
+                setErrors({});
+                signInWithProvider("facebook");
+              }}
               accessibilityRole="button"
-              accessibilityLabel="Facebook sign-in unavailable"
+              accessibilityLabel="Continue with Facebook"
             >
-              <Ionicons
-                name="logo-facebook"
-                size={22}
-                color="#1877F2"
-              />
-              <Text style={styles.socialText}>Facebook</Text>
+              {loadingProvider === "facebook" ? (
+                <ActivityIndicator color="#1877F2" />
+              ) : (
+                <>
+                  <Ionicons
+                    name="logo-facebook"
+                    size={22}
+                    color="#1877F2"
+                  />
+                  <Text style={styles.socialText}>Facebook</Text>
+                </>
+              )}
             </Pressable>
           </View>
 

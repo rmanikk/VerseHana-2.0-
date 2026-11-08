@@ -17,7 +17,7 @@ function getJwtSecret() {
   return secret;
 }
 
-export async function issueAuthTokens(user) {
+export async function issueAuthTokens(user, db = { query }) {
   if (!user?.id) {
     throw new Error("A valid user is required to issue tokens.");
   }
@@ -32,13 +32,15 @@ export async function issueAuthTokens(user) {
   );
 
   if (!Number.isInteger(refreshDays) || refreshDays < 1) {
-    throw new Error("REFRESH_TOKEN_DAYS must be a positive integer.");
+    throw new Error(
+      "REFRESH_TOKEN_DAYS must be a positive integer."
+    );
   }
 
-  // Generate a cryptographically secure refresh token.
-  const refreshToken = crypto.randomBytes(48).toString("base64url");
+  const refreshToken = crypto
+    .randomBytes(48)
+    .toString("base64url");
 
-  // Store only its SHA-256 hash in PostgreSQL.
   const tokenHash = crypto
     .createHash("sha256")
     .update(refreshToken)
@@ -48,7 +50,7 @@ export async function issueAuthTokens(user) {
     Date.now() + refreshDays * 24 * 60 * 60 * 1000
   );
 
-  await query(
+  await db.query(
     `INSERT INTO refresh_sessions
       (user_id, token_hash, expires_at)
      VALUES ($1, $2, $3)`,
