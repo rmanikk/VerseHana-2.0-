@@ -107,7 +107,7 @@ export default function ChooseUsernameScreen() {
         data.refreshToken,
       );
 
-      router.replace("/(tabs)");
+      router.replace("/onboarding");
     } catch (err) {
       console.error("OAuth signup error:", err);
 

@@ -22,6 +22,11 @@ import {
   authenticateToken,
 } from "../middleware/auth.middleware.js";
 
+import {
+  getOnboarding,
+  saveOnboarding,
+} from "../controllers/onboarding.controller.js";
+
 const router = express.Router();
 
 const signupLimiter = rateLimit({
@@ -68,5 +73,7 @@ router.post("/refresh", refreshLimiter, refreshSession);
 router.post("/logout", refreshLimiter, logout);
 
 router.get("/me", authenticateToken, getCurrentUser);
+router.get("/onboarding", authenticateToken, getOnboarding);
+router.put("/onboarding", authenticateToken, saveOnboarding);
 
 export default router;

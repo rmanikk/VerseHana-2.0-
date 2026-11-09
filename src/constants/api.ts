@@ -24,4 +24,8 @@ export const API = {
     facebook: `${API_BASE_URL}/api/oauth/facebook`,
     completeSignup: `${API_BASE_URL}/api/oauth/complete-signup`,
   },
+  onboarding: {
+  get: `${API_BASE_URL}/api/auth/onboarding`,
+  save: `${API_BASE_URL}/api/auth/onboarding`,
+},
 };

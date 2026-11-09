@@ -108,3 +108,36 @@ CREATE TABLE IF NOT EXISTS refresh_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user
 ON refresh_sessions(user_id);
+
+
+-- =====================================================
+-- VERSEHANA 2.0 — USER ONBOARDING
+-- =====================================================
+
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS onboarding_completed
+BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS user_onboarding_preferences (
+    user_id UUID PRIMARY KEY
+        REFERENCES users(id) ON DELETE CASCADE,
+
+    mood_preferences JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    pulse_interests JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    music_preferences JSONB NOT NULL DEFAULT '[]'::jsonb,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT valid_mood_preferences
+        CHECK (jsonb_typeof(mood_preferences) = 'array'),
+
+    CONSTRAINT valid_pulse_interests
+        CHECK (jsonb_typeof(pulse_interests) = 'array'),
+
+    CONSTRAINT valid_music_preferences
+        CHECK (jsonb_typeof(music_preferences) = 'array')
+);

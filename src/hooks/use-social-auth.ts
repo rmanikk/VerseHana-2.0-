@@ -1,15 +1,12 @@
+
 import { useState } from "react";
+import { Platform } from "react-native";
 import { router } from "expo-router";
 
 import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
-
-import {
-  AccessToken,
-  LoginManager,
-} from "react-native-fbsdk-next";
 
 import { authenticateWithOAuth } from "@/services/oauth-auth";
 
@@ -38,6 +35,11 @@ export function useSocialAuth() {
       let fullName = "";
 
       if (provider === "google") {
+        if (Platform.OS === "web") {
+  throw new Error(
+    "Google native login is currently available in the Android and iOS apps only.",
+  );
+}
         await GoogleSignin.hasPlayServices({
           showPlayServicesUpdateDialog: true,
         });
@@ -57,6 +59,15 @@ export function useSocialAuth() {
       }
 
       if (provider === "facebook") {
+        if (Platform.OS === "web") {
+          throw new Error(
+            "Facebook login is currently available in the Android and iOS apps only.",
+          );
+        }
+
+        const { AccessToken, LoginManager } =
+          await import("react-native-fbsdk-next");
+
         const loginResult =
           await LoginManager.logInWithPermissions([
             "public_profile",

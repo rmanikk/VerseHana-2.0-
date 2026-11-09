@@ -166,8 +166,8 @@ export default function VerifyOtpScreen() {
       setMessage("Your email has been verified successfully!");
 
       setTimeout(() => {
-        router.replace("/(tabs)");
-      }, 450);
+  router.replace("/onboarding");
+}, 450);
     } catch (err) {
       console.error("OTP verification error:", err);
 
