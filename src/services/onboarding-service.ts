@@ -15,8 +15,8 @@ export type Mood =
 export type Artist = {
   id: string;
   name: string;
-  genre: string;
-  description: string;
+  imageUrl: string | null;
+  spotifyUrl: string | null;
 };
 
 export type OnboardingPreferences = {

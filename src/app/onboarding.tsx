@@ -345,12 +345,7 @@ export default function OnboardingScreen() {
                           <Text style={styles.artistName}>
                             {artist.name}
                           </Text>
-                          <Text style={styles.artistGenre}>
-                            {artist.genre}
-                          </Text>
-                          <Text style={styles.artistDescription}>
-                            {artist.description}
-                          </Text>
+                          
                         </View>
 
                         <View
