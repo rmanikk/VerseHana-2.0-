@@ -1,7 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
+
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -11,17 +11,19 @@ import {
   Text,
   View,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import {
+  getArtistSpotlight,
   saveOnboarding,
-  type OnboardingPreferences,
+  type Artist,
+  type Mood,
 } from "@/services/onboarding-service";
 
 const COLORS = {
   background: "#030707",
   card: "#102020",
-  cardSelected: "#12312F",
+  selected: "#153B38",
   primary: "#35C9BC",
   text: "#FFFFFF",
   secondary: "#A3B8B8",
@@ -29,147 +31,169 @@ const COLORS = {
   error: "#FF7777",
 };
 
-const STEPS = [
+const MOODS: {
+  id: Mood;
+  title: string;
+  emoji: string;
+  description: string;
+}[] = [
+  { id: "happy", title: "Happy", emoji: "😊", description: "Bright and uplifting" },
+  { id: "calm", title: "Calm", emoji: "😌", description: "Peaceful and relaxed" },
+  { id: "rain", title: "Rain", emoji: "🌧️", description: "Reflective and dreamy" },
+  { id: "night", title: "Night", emoji: "🌙", description: "For the late hours" },
+  { id: "love", title: "Love", emoji: "❤️", description: "Warm and heartfelt" },
+  { id: "focus", title: "Focus", emoji: "💪", description: "Clear your mind" },
+  { id: "party", title: "Party", emoji: "🎉", description: "Energy and excitement" },
+  { id: "sad", title: "Sad", emoji: "😢", description: "Music for reflection" },
+];
+
+const FEATURES = [
   {
-    title: "How are you feeling lately?",
-    subtitle:
-      "Choose the moods that feel closest to you. You can select more than one.",
-    label: "Mood Discovery",
-    options: [
-      { id: "calm", title: "Calm", icon: "cloud-outline" },
-      { id: "happy", title: "Happy", icon: "sunny-outline" },
-      { id: "motivated", title: "Motivated", icon: "flash-outline" },
-      { id: "emotional", title: "Emotional", icon: "rainy-outline" },
-      { id: "thoughtful", title: "Thoughtful", icon: "moon-outline" },
-      { id: "lonely", title: "Lonely", icon: "water-outline" },
-      { id: "adventurous", title: "Adventurous", icon: "compass-outline" },
-      { id: "inspired", title: "Inspired", icon: "sparkles-outline" },
-    ],
+    emoji: "⬇️",
+    title: "Offline Downloads",
+    description: "Enjoy your saved music anywhere.",
   },
   {
-    title: "Find your people.",
-    subtitle:
-      "What would you love to explore in the VerseHana community?",
-    label: "Pulse & Community",
-    options: [
-      { id: "poetry", title: "Poetry & Writing", icon: "book-outline" },
-      { id: "thoughts", title: "Sharing Thoughts", icon: "chatbubble-outline" },
-      { id: "stories", title: "Reading Stories", icon: "library-outline" },
-      {
-        id: "conversations",
-        title: "Meaningful Conversations",
-        icon: "people-outline",
-      },
-      {
-        id: "creativity",
-        title: "Creative Expression",
-        icon: "color-palette-outline",
-      },
-      {
-        id: "perspectives",
-        title: "New Perspectives",
-        icon: "globe-outline",
-      },
-    ],
+    emoji: "💬",
+    title: "Community",
+    description: "Connect through shared thoughts and creativity.",
   },
   {
-    title: "What moves your soul?",
-    subtitle:
-      "Choose the music styles you enjoy or would like to discover.",
-    label: "Your Music Universe",
-    options: [
-      { id: "pop", title: "Pop", icon: "musical-notes-outline" },
-      { id: "indie", title: "Indie", icon: "headset-outline" },
-      { id: "classical", title: "Classical", icon: "musical-note-outline" },
-      { id: "hiphop", title: "Hip-hop", icon: "mic-outline" },
-      { id: "lofi", title: "Lo-fi", icon: "moon-outline" },
-      { id: "rock", title: "Rock", icon: "guitar-outline" },
-      { id: "instrumental", title: "Instrumental", icon: "piano-outline" },
-      { id: "devotional", title: "Devotional", icon: "heart-outline" },
-    ],
+    emoji: "🎬",
+    title: "Music Reels",
+    description: "Discover songs through short-form video.",
   },
-] as const;
+  {
+    emoji: "🎧",
+    title: "Your Music Space",
+    description: "Keep your favourite discoveries together.",
+  },
+  {
+    emoji: "✨",
+    title: "Personalized Discovery",
+    description: "Find something that resonates with you.",
+  },
+];
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
 
-  const [preferences, setPreferences] =
-    useState<OnboardingPreferences>({
-      moodPreferences: [],
-      pulseInterests: [],
-      musicPreferences: [],
-    });
+  const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
+  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
 
-  const [loading, setLoading] = useState(false);
+  const [artistLoading, setArtistLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const currentStep = STEPS[step];
+  // Load artists whenever the user reaches Artist Spotlight.
+  useEffect(() => {
+    if (step !== 1 || !selectedMood) return;
 
-  const preferenceKeys = [
-    "moodPreferences",
-    "pulseInterests",
-    "musicPreferences",
-  ] as const;
+    let active = true;
 
-  const currentKey = preferenceKeys[step];
+    async function loadArtists() {
+      setArtistLoading(true);
+      setError("");
+      setArtists([]);
+      setSelectedArtistIds([]);
 
-  const selectedItems = preferences[currentKey];
+      try {
+        const result = await getArtistSpotlight(selectedMood!);
 
-  const toggleOption = (id: string) => {
-    setPreferences((previous) => {
-      const current = previous[currentKey];
+        if (active) {
+          setArtists(result);
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load artists. Please try again."
+          );
+        }
+      } finally {
+        if (active) {
+          setArtistLoading(false);
+        }
+      }
+    }
 
-      const updated = current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id];
+    loadArtists();
 
-      return {
-        ...previous,
-        [currentKey]: updated,
-      };
-    });
+    return () => {
+      active = false;
+    };
+  }, [step, selectedMood]);
+
+  const toggleArtist = (artistId: string) => {
+    setSelectedArtistIds((previous) =>
+      previous.includes(artistId)
+        ? previous.filter((id) => id !== artistId)
+        : [...previous, artistId]
+    );
 
     setError("");
   };
 
   const handleContinue = () => {
-    if (step < STEPS.length - 1) {
-      setStep((previous) => previous + 1);
-      setError("");
+    setError("");
+
+    if (step === 0) {
+      if (!selectedMood) {
+        setError("Please choose a mood to continue.");
+        return;
+      }
+
+      setStep(1);
       return;
     }
 
-    handleComplete();
+    if (step === 1) {
+      if (selectedArtistIds.length === 0) {
+        setError("Please select at least one artist.");
+        return;
+      }
+
+      setStep(2);
+    }
+  };
+
+  const handleBack = () => {
+    setError("");
+
+    if (step > 0) {
+      setStep((previous) => previous - 1);
+    } else {
+      router.back();
+    }
   };
 
   const handleComplete = async () => {
-    if (loading) return;
+    if (saving || !selectedMood) return;
 
-    setLoading(true);
+    setSaving(true);
     setError("");
 
     try {
-      await saveOnboarding(preferences);
+      await saveOnboarding({
+        selectedMood,
+        favoriteArtistIds: selectedArtistIds,
+      });
+
       router.replace("/(tabs)");
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to save your preferences. Please try again.",
+          : "Unable to complete onboarding. Please try again."
       );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleBack = () => {
-    if (step > 0) {
-      setStep((previous) => previous - 1);
-      setError("");
-    } else {
-      router.back();
-    }
-  };
+  const stepLabels = ["Mood Discovery", "Artist Spotlight", "Meet VerseHana"];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -189,143 +213,272 @@ export default function OnboardingScreen() {
 
         {/* Progress */}
         <View style={styles.progressContainer}>
-          {STEPS.map((item, index) => (
+          {[0, 1, 2].map((item) => (
             <View
-              key={item.label}
+              key={item}
               style={[
                 styles.progressSegment,
-                index <= step && styles.progressActive,
+                item <= step && styles.progressActive,
               ]}
             />
           ))}
         </View>
 
-        {/* Content */}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.sectionLabel}>
-            {currentStep.label.toUpperCase()}
+            {stepLabels[step].toUpperCase()}
           </Text>
 
-          <Text style={styles.heading}>
-            {currentStep.title}
-          </Text>
+          {/* SCREEN 1: MOOD DISCOVERY */}
+          {step === 0 && (
+            <>
+              <Text style={styles.heading}>
+                What does your world feel like today?
+              </Text>
 
-          <Text style={styles.subtitle}>
-            {currentStep.subtitle}
-          </Text>
+              <Text style={styles.subtitle}>
+                Choose one mood. We'll use it to shape your music discovery
+                experience.
+              </Text>
 
-          <Text style={styles.selectionHint}>
-            SELECT ALL THAT APPLY
-          </Text>
+              <Text style={styles.selectionHint}>CHOOSE YOUR MOOD</Text>
 
-          {/* Options */}
-          <View style={styles.optionsGrid}>
-            {currentStep.options.map((option) => {
-              const selected = selectedItems.includes(option.id);
+              <View style={styles.moodGrid}>
+                {MOODS.map((mood) => {
+                  const selected = selectedMood === mood.id;
 
-              return (
+                  return (
+                    <Pressable
+                      key={mood.id}
+                      onPress={() => {
+                        setSelectedMood(mood.id);
+                        setError("");
+                      }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      style={[
+                        styles.moodCard,
+                        selected && styles.cardSelected,
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={
+                          selected
+                            ? ["#17413D", "#102020"]
+                            : ["#102020", "#0B1716"]
+                        }
+                        style={styles.moodGradient}
+                      >
+                        <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+
+                        <View style={styles.moodTextContainer}>
+                          <Text style={styles.moodTitle}>{mood.title}</Text>
+                          <Text style={styles.moodDescription}>
+                            {mood.description}
+                          </Text>
+                        </View>
+
+                        {selected && (
+                          <Text style={styles.selectedCheck}>✓</Text>
+                        )}
+                      </LinearGradient>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {/* SCREEN 2: ARTIST SPOTLIGHT */}
+          {step === 1 && (
+            <>
+              <Text style={styles.heading}>
+                Artists that match your mood.
+              </Text>
+
+              <Text style={styles.subtitle}>
+                Discover artists picked around your{" "}
+                {selectedMood ?? "selected"} mood. Choose as many as you like.
+              </Text>
+
+              <View style={styles.artistHeader}>
+                <Text style={styles.selectionHint}>ARTIST SPOTLIGHT</Text>
+                <Text style={styles.artistCount}>
+                  {selectedArtistIds.length} selected
+                </Text>
+              </View>
+
+              {artistLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.loadingText}>
+                    Finding artists for your mood...
+                  </Text>
+                </View>
+              ) : artists.length > 0 ? (
+                <View style={styles.artistList}>
+                  {artists.map((artist) => {
+                    const selected = selectedArtistIds.includes(artist.id);
+
+                    return (
+                      <Pressable
+                        key={artist.id}
+                        onPress={() => toggleArtist(artist.id)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: selected }}
+                        style={[
+                          styles.artistCard,
+                          selected && styles.cardSelected,
+                        ]}
+                      >
+                        <View style={styles.artistArtwork}>
+                          <Text style={styles.artistArtworkText}>
+                            {artist.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+
+                        <View style={styles.artistInfo}>
+                          <Text style={styles.artistName}>
+                            {artist.name}
+                          </Text>
+                          <Text style={styles.artistGenre}>
+                            {artist.genre}
+                          </Text>
+                          <Text style={styles.artistDescription}>
+                            {artist.description}
+                          </Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.artistCheck,
+                            selected && styles.artistCheckSelected,
+                          ]}
+                        >
+                          {selected && (
+                            <Text style={styles.artistCheckText}>✓</Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : !error ? (
+                <Text style={styles.emptyText}>
+                  No artists are available for this mood right now.
+                </Text>
+              ) : null}
+
+              {error && !artistLoading && (
                 <Pressable
-                  key={option.id}
-                  onPress={() => toggleOption(option.id)}
-                  style={[
-                    styles.optionCard,
-                    selected && styles.optionSelected,
-                  ]}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: selected }}
+                  onPress={() => setStep(0)}
+                  style={styles.retryButton}
                 >
-                  <LinearGradient
-                    colors={
-                      selected
-                        ? ["#153B38", "#102020"]
-                        : ["#102020", "#0B1716"]
-                    }
-                    style={styles.optionGradient}
-                  >
-                    <Ionicons
-                      name={option.icon as any}
-                      size={23}
-                      color={selected ? COLORS.primary : COLORS.secondary}
-                    />
+                  <Text style={styles.retryText}>
+                    Go back and choose another mood
+                  </Text>
+                </Pressable>
+              )}
+            </>
+          )}
 
-                    <Text style={styles.optionTitle}>
-                      {option.title}
+          {/* SCREEN 3: MEET VERSEHANA */}
+          {step === 2 && (
+            <>
+              <Text style={styles.heading}>
+                A little more than just music.
+              </Text>
+
+              <Text style={styles.subtitle}>
+                Welcome to a space made for discovering, expressing and
+                connecting through music.
+              </Text>
+
+              <View style={styles.featureGrid}>
+                {FEATURES.map((feature, index) => (
+                  <View
+                    key={feature.title}
+                    style={[
+                      styles.featureTile,
+                      index === 4 && styles.featureTileLast,
+                    ]}
+                  >
+                    <View style={styles.featureIconBox}>
+                      <Text style={styles.featureEmoji}>
+                        {feature.emoji}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.featureTitle}>
+                      {feature.title}
                     </Text>
 
-                    {selected && (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={19}
-                        color={COLORS.primary}
-                        style={styles.checkIcon}
-                      />
-                    )}
-                  </LinearGradient>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <Text style={styles.featureDescription}>
+                      {feature.description}
+                    </Text>
+                  </View>
+                ))}
+              </View>
 
-          <Text style={styles.selectedCount}>
-            {selectedItems.length} selected
-          </Text>
+              <View style={styles.welcomeNote}>
+                <Text style={styles.welcomeEmoji}>✦</Text>
+                <Text style={styles.welcomeText}>
+                  Your journey. Your mood. Your VerseHana.
+                </Text>
+              </View>
+            </>
+          )}
 
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </ScrollView>
 
         {/* Footer */}
         <View style={styles.footer}>
           <View style={styles.footerButtons}>
-            {step > 0 && (
-              <Pressable
-                onPress={handleBack}
-                disabled={loading}
-                style={styles.backButton}
-              >
-                <Ionicons
-                  name="arrow-back"
-                  size={19}
-                  color={COLORS.primary}
-                />
-              </Pressable>
-            )}
+            <Pressable
+              onPress={handleBack}
+              disabled={saving}
+              style={styles.backButton}
+            >
+              <Text style={styles.backArrow}>←</Text>
+            </Pressable>
 
             <Pressable
-              onPress={handleContinue}
-              disabled={loading}
-              style={styles.continueButton}
+              onPress={step === 2 ? handleComplete : handleContinue}
+              disabled={saving || (step === 1 && artistLoading)}
+              style={[
+                styles.continueButton,
+                (saving || (step === 1 && artistLoading)) &&
+                  styles.buttonDisabled,
+              ]}
             >
-              {loading ? (
+              {saving ? (
                 <ActivityIndicator color={COLORS.background} />
               ) : (
                 <>
                   <Text style={styles.continueText}>
-                    {step === 2 ? "Finish" : "Continue"}
+                    {step === 2
+                      ? "Let's Begin"
+                      : step === 1
+                        ? "Continue"
+                        : "Discover Artists"}
                   </Text>
 
-                  <Ionicons
-                    name="arrow-forward"
-                    size={19}
-                    color={COLORS.background}
-                  />
+                  <Text style={styles.continueArrow}>→</Text>
                 </>
               )}
             </Pressable>
           </View>
 
-          <Pressable
-            onPress={handleComplete}
-            disabled={loading}
-            style={styles.skipButton}
-          >
-            <Text style={styles.skipText}>Skip for now</Text>
-          </Pressable>
+          <Text style={styles.footerHint}>
+            {step === 2
+              ? "Your VerseHana experience starts here."
+              : "You can explore more after onboarding."}
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -337,12 +490,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-
   container: {
     flex: 1,
     paddingHorizontal: 23,
   },
-
   topGlow: {
     position: "absolute",
     top: -150,
@@ -353,7 +504,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#123B37",
     opacity: 0.35,
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -361,50 +511,41 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 22,
   },
-
   brand: {
     color: COLORS.text,
     fontSize: 19,
     fontWeight: "800",
     letterSpacing: 2,
   },
-
   brandAccent: {
     color: COLORS.primary,
   },
-
   stepText: {
     color: COLORS.secondary,
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 1,
   },
-
   progressContainer: {
     flexDirection: "row",
     gap: 7,
-    marginBottom: 35,
+    marginBottom: 30,
   },
-
   progressSegment: {
     flex: 1,
     height: 4,
     borderRadius: 10,
     backgroundColor: COLORS.border,
   },
-
   progressActive: {
     backgroundColor: COLORS.primary,
   },
-
   scroll: {
     flex: 1,
   },
-
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 22,
   },
-
   sectionLabel: {
     color: COLORS.primary,
     fontSize: 11,
@@ -412,22 +553,19 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 13,
   },
-
   heading: {
     color: COLORS.text,
-    fontSize: 29,
+    fontSize: 28,
     fontWeight: "800",
-    lineHeight: 37,
+    lineHeight: 36,
     marginBottom: 10,
   },
-
   subtitle: {
     color: COLORS.secondary,
     fontSize: 14,
     lineHeight: 22,
-    marginBottom: 29,
+    marginBottom: 27,
   },
-
   selectionHint: {
     color: "#718B88",
     fontSize: 10,
@@ -435,68 +573,224 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 13,
   },
-
-  optionsGrid: {
+  moodGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     gap: 11,
   },
-
-  optionCard: {
+  moodCard: {
     width: "48%",
     borderRadius: 15,
     borderWidth: 1,
     borderColor: COLORS.border,
     overflow: "hidden",
   },
-
-  optionSelected: {
+  cardSelected: {
     borderColor: COLORS.primary,
   },
-
-  optionGradient: {
-    minHeight: 108,
-    padding: 14,
-    justifyContent: "space-between",
+  moodGradient: {
+    minHeight: 105,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
-
-  optionTitle: {
+  moodEmoji: {
+    fontSize: 27,
+  },
+  moodTextContainer: {
+    flex: 1,
+  },
+  moodTitle: {
     color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  moodDescription: {
+    color: COLORS.secondary,
+    fontSize: 10,
+    marginTop: 4,
+  },
+  selectedCheck: {
+    color: COLORS.primary,
+    fontSize: 17,
+    fontWeight: "800",
+    position: "absolute",
+    top: 7,
+    right: 9,
+  },
+  artistHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  artistCount: {
+    color: COLORS.primary,
+    fontSize: 12,
+    marginBottom: 13,
+  },
+  artistList: {
+    gap: 11,
+  },
+  artistCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 15,
+    padding: 12,
+    gap: 12,
+  },
+  artistArtwork: {
+    width: 53,
+    height: 53,
+    borderRadius: 13,
+    backgroundColor: "#1B3936",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  artistArtworkText: {
+    color: COLORS.primary,
+    fontSize: 23,
+    fontWeight: "800",
+  },
+  artistInfo: {
+    flex: 1,
+  },
+  artistName: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  artistGenre: {
+    color: COLORS.primary,
+    fontSize: 11,
+    marginTop: 3,
+  },
+  artistDescription: {
+    color: COLORS.secondary,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  artistCheck: {
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#55706C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  artistCheckSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  artistCheckText: {
+    color: COLORS.background,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  loadingContainer: {
+    minHeight: 190,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  loadingText: {
+    color: COLORS.secondary,
+    fontSize: 13,
+  },
+  emptyText: {
+    color: COLORS.secondary,
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 30,
+  },
+  retryButton: {
+    padding: 13,
+    alignItems: "center",
+  },
+  retryText: {
+    color: COLORS.primary,
     fontSize: 13,
     fontWeight: "600",
-    marginTop: 13,
-    paddingRight: 5,
   },
-
-  checkIcon: {
-    position: "absolute",
-    top: 12,
-    right: 12,
+  featureGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 11,
   },
-
-  selectedCount: {
+  featureTile: {
+    width: "48%",
+    minHeight: 155,
+    padding: 13,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: "#0D1A19",
+  },
+  featureTileLast: {
+    width: "100%",
+    minHeight: 125,
+  },
+  featureIconBox: {
+    width: 37,
+    height: 37,
+    borderRadius: 12,
+    backgroundColor: "#173532",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  featureEmoji: {
+    fontSize: 18,
+  },
+  featureTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  featureDescription: {
     color: COLORS.secondary,
-    fontSize: 12,
-    marginTop: 19,
+    fontSize: 11,
+    lineHeight: 17,
   },
-
+  welcomeNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    marginTop: 23,
+    paddingVertical: 15,
+  },
+  welcomeEmoji: {
+    color: COLORS.primary,
+    fontSize: 19,
+  },
+  welcomeText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   errorText: {
     color: COLORS.error,
     fontSize: 13,
     marginTop: 15,
+    lineHeight: 19,
   },
-
   footer: {
     paddingTop: 13,
     paddingBottom: 10,
   },
-
   footerButtons: {
     flexDirection: "row",
     gap: 11,
   },
-
   backButton: {
     width: 54,
     height: 54,
@@ -506,7 +800,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
+  backArrow: {
+    color: COLORS.primary,
+    fontSize: 24,
+  },
   continueButton: {
     flex: 1,
     height: 54,
@@ -517,21 +814,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
   },
-
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   continueText: {
     color: COLORS.background,
     fontSize: 15,
     fontWeight: "800",
   },
-
-  skipButton: {
-    alignItems: "center",
-    padding: 13,
+  continueArrow: {
+    color: COLORS.background,
+    fontSize: 19,
+    fontWeight: "700",
   },
-
-  skipText: {
-    color: COLORS.secondary,
-    fontSize: 13,
-    fontWeight: "500",
+  footerHint: {
+    color: "#718B88",
+    textAlign: "center",
+    fontSize: 11,
+    marginTop: 12,
   },
 });

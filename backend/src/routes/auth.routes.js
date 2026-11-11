@@ -27,6 +27,8 @@ import {
   saveOnboarding,
 } from "../controllers/onboarding.controller.js";
 
+import { getArtistSpotlight } from "../controllers/artist.controller.js";
+
 const router = express.Router();
 
 const signupLimiter = rateLimit({
@@ -74,6 +76,11 @@ router.post("/logout", refreshLimiter, logout);
 
 router.get("/me", authenticateToken, getCurrentUser);
 router.get("/onboarding", authenticateToken, getOnboarding);
+router.get(
+  "/artists/spotlight",
+  authenticateToken,
+  getArtistSpotlight
+);
 router.put("/onboarding", authenticateToken, saveOnboarding);
 
 export default router;

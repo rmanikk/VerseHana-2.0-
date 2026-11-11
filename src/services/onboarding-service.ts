@@ -1,19 +1,37 @@
+
 import { API } from "@/constants/api";
 import { authStorage } from "@/services/auth-storage";
 
+export type Mood =
+  | "happy"
+  | "calm"
+  | "rain"
+  | "night"
+  | "love"
+  | "focus"
+  | "party"
+  | "sad";
+
+export type Artist = {
+  id: string;
+  name: string;
+  genre: string;
+  description: string;
+};
+
 export type OnboardingPreferences = {
-  moodPreferences: string[];
-  pulseInterests: string[];
-  musicPreferences: string[];
+  selectedMood: Mood;
+  favoriteArtistIds: string[];
 };
 
 export type OnboardingData = OnboardingPreferences & {
   completed: boolean;
 };
 
-async function onboardingRequest(
+async function authenticatedRequest(
+  url: string,
   method: "GET" | "PUT",
-  body?: OnboardingPreferences
+  body?: unknown
 ) {
   const accessToken = await authStorage.getAccessToken();
 
@@ -21,7 +39,7 @@ async function onboardingRequest(
     throw new Error("Please log in to continue.");
   }
 
-  const response = await fetch(API.onboarding[method === "GET" ? "get" : "save"], {
+  const response = await fetch(url, {
     method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -39,8 +57,21 @@ async function onboardingRequest(
   return data;
 }
 
+export async function getArtistSpotlight(
+  mood: Mood
+): Promise<Artist[]> {
+  const url = `${API.artists.spotlight}?mood=${encodeURIComponent(mood)}`;
+
+  const data = await authenticatedRequest(url, "GET");
+
+  return data.artists;
+}
+
 export async function getOnboarding(): Promise<OnboardingData> {
-  const data = await onboardingRequest("GET");
+  const data = await authenticatedRequest(
+    API.onboarding.get,
+    "GET"
+  );
 
   return data.onboarding;
 }
@@ -48,5 +79,9 @@ export async function getOnboarding(): Promise<OnboardingData> {
 export async function saveOnboarding(
   preferences: OnboardingPreferences
 ) {
-  return onboardingRequest("PUT", preferences);
+  return authenticatedRequest(
+    API.onboarding.save,
+    "PUT",
+    preferences
+  );
 }

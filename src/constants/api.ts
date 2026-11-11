@@ -28,4 +28,7 @@ export const API = {
   get: `${API_BASE_URL}/api/auth/onboarding`,
   save: `${API_BASE_URL}/api/auth/onboarding`,
 },
+artists: {
+  spotlight: `${API_BASE_URL}/api/auth/artists/spotlight`,
+},
 };
