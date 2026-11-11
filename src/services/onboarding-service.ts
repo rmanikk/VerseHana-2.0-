@@ -16,7 +16,7 @@ export type Artist = {
   id: string;
   name: string;
   imageUrl: string | null;
-  spotifyUrl: string | null;
+  youtubeUrl: string | null;
 };
 
 export type OnboardingPreferences = {
@@ -64,14 +64,11 @@ export async function getArtistSpotlight(
 
   const data = await authenticatedRequest(url, "GET");
 
-  return data.artists;
+  return data.artists as Artist[];
 }
 
 export async function getOnboarding(): Promise<OnboardingData> {
-  const data = await authenticatedRequest(
-    API.onboarding.get,
-    "GET"
-  );
+  const data = await authenticatedRequest(API.onboarding.get, "GET");
 
   return data.onboarding;
 }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +31,8 @@ const COLORS = {
   border: "#24413F",
   error: "#FF7777",
 };
+
+const MAX_ARTISTS = 6;
 
 const MOODS: {
   id: Mood;
@@ -86,7 +89,7 @@ export default function OnboardingScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Load artists whenever the user reaches Artist Spotlight.
+  // Load a maximum of six artists for the selected mood.
   useEffect(() => {
     if (step !== 1 || !selectedMood) return;
 
@@ -102,7 +105,7 @@ export default function OnboardingScreen() {
         const result = await getArtistSpotlight(selectedMood!);
 
         if (active) {
-          setArtists(result);
+          setArtists(result.slice(0, MAX_ARTISTS));
         }
       } catch (err) {
         if (active) {
@@ -302,11 +305,12 @@ export default function OnboardingScreen() {
 
               <Text style={styles.subtitle}>
                 Discover artists picked around your{" "}
-                {selectedMood ?? "selected"} mood. Choose as many as you like.
+                {selectedMood ?? "selected"} mood. Choose your favourites.
               </Text>
 
               <View style={styles.artistHeader}>
                 <Text style={styles.selectionHint}>ARTIST SPOTLIGHT</Text>
+
                 <Text style={styles.artistCount}>
                   {selectedArtistIds.length} selected
                 </Text>
@@ -320,8 +324,8 @@ export default function OnboardingScreen() {
                   </Text>
                 </View>
               ) : artists.length > 0 ? (
-                <View style={styles.artistList}>
-                  {artists.map((artist) => {
+                <View style={styles.artistGrid}>
+                  {artists.slice(0, MAX_ARTISTS).map((artist) => {
                     const selected = selectedArtistIds.includes(artist.id);
 
                     return (
@@ -332,32 +336,42 @@ export default function OnboardingScreen() {
                         accessibilityState={{ checked: selected }}
                         style={[
                           styles.artistCard,
-                          selected && styles.cardSelected,
+                          selected && styles.artistCardSelected,
                         ]}
                       >
-                        <View style={styles.artistArtwork}>
-                          <Text style={styles.artistArtworkText}>
-                            {artist.name.charAt(0).toUpperCase()}
-                          </Text>
-                        </View>
-
-                        <View style={styles.artistInfo}>
-                          <Text style={styles.artistName}>
-                            {artist.name}
-                          </Text>
-                          
-                        </View>
-
-                        <View
-                          style={[
-                            styles.artistCheck,
-                            selected && styles.artistCheckSelected,
-                          ]}
-                        >
-                          {selected && (
-                            <Text style={styles.artistCheckText}>✓</Text>
+                        <View style={styles.artistImageContainer}>
+                          {artist.imageUrl ? (
+                            <Image
+                              source={{ uri: artist.imageUrl }}
+                              style={styles.artistImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.artistImageFallback}>
+                              <Text style={styles.artistFallbackText}>
+                                {artist.name.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
                           )}
+
+                          <View
+                            style={[
+                              styles.artistCheck,
+                              selected && styles.artistCheckSelected,
+                            ]}
+                          >
+                            {selected && (
+                              <Text style={styles.artistCheckText}>✓</Text>
+                            )}
+                          </View>
                         </View>
+
+                        <Text
+                          style={styles.artistName}
+                          numberOfLines={2}
+                        >
+                          {artist.name}
+                        </Text>
                       </Pressable>
                     );
                   })}
@@ -625,57 +639,65 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 13,
   },
-  artistList: {
-    gap: 11,
+  artistGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 15,
   },
   artistCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    width: "48%",
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 15,
-    padding: 12,
-    gap: 12,
+    borderRadius: 16,
+    padding: 9,
+    alignItems: "center",
+    gap: 10,
   },
-  artistArtwork: {
-    width: 53,
-    height: 53,
-    borderRadius: 13,
+  artistCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.selected,
+  },
+  artistImageContainer: {
+    width: "100%",
+    height: 125,
+    borderRadius: 11,
+    overflow: "hidden",
+    position: "relative",
     backgroundColor: "#1B3936",
+  },
+  artistImage: {
+    width: "100%",
+    height: "100%",
+  },
+  artistImageFallback: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  artistArtworkText: {
+  artistFallbackText: {
     color: COLORS.primary,
-    fontSize: 23,
+    fontSize: 32,
     fontWeight: "800",
-  },
-  artistInfo: {
-    flex: 1,
   },
   artistName: {
     color: COLORS.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
-  },
-  artistGenre: {
-    color: COLORS.primary,
-    fontSize: 11,
-    marginTop: 3,
-  },
-  artistDescription: {
-    color: COLORS.secondary,
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 4,
+    textAlign: "center",
+    minHeight: 34,
   },
   artistCheck: {
-    width: 23,
-    height: 23,
-    borderRadius: 12,
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    backgroundColor: "rgba(3,7,7,0.75)",
     borderWidth: 1,
-    borderColor: "#55706C",
+    borderColor: "#A3B8B8",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -685,7 +707,7 @@ const styles = StyleSheet.create({
   },
   artistCheckText: {
     color: COLORS.background,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "900",
   },
   loadingContainer: {

@@ -1,106 +1,122 @@
 
-import * as SplashScreen from "expo-splash-screen";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useRef } from "react";
-
+import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
-  Platform,
   Easing,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors } from "@/constants/theme";
 
-const colors = Colors.dark;
+import {
+  getArtistSpotlight,
+  saveOnboarding,
+  type Artist,
+  type Mood,
+} from "@/services/onboarding-service";
 
-const BAR_HEIGHTS = [
-  13, 22, 34, 19, 42, 27, 48, 31, 54, 35, 45,
-  25, 39, 20, 47, 29, 37, 17, 30, 15, 24,
+const COLORS = {
+  background: "#030707",
+  card: "#102020",
+  selected: "#153B38",
+  primary: "#35C9BC",
+  text: "#FFFFFF",
+  secondary: "#A3B8B8",
+  border: "#24413F",
+  error: "#FF7777",
+};
+
+const MAX_ARTISTS = 6;
+
+const MOODS: {
+  id: Mood;
+  title: string;
+  emoji: string;
+  description: string;
+}[] = [
+  { id: "happy", title: "Happy", emoji: "😊", description: "Bright and uplifting" },
+  { id: "calm", title: "Calm", emoji: "😌", description: "Peaceful and relaxed" },
+  { id: "rain", title: "Rain", emoji: "🌧️", description: "Reflective and dreamy" },
+  { id: "night", title: "Night", emoji: "🌙", description: "For the late hours" },
+  { id: "love", title: "Love", emoji: "❤️", description: "Warm and heartfelt" },
+  { id: "focus", title: "Focus", emoji: "💪", description: "Clear your mind" },
+  { id: "party", title: "Party", emoji: "🎉", description: "Energy and excitement" },
+  { id: "sad", title: "Sad", emoji: "😢", description: "Music for reflection" },
 ];
 
 const FEATURES = [
   {
-    id: "mood",
-    title: "Mood-Based",
-    subtitle: "Discovery",
-    icon: "happy-outline" as const,
+    id: "downloads",
+    title: "Offline Downloads",
+    description: "Your favourite music, wherever you go.",
+    icon: "cloud-download-outline" as const,
     accent: "#58D8E8",
-    type: "mood",
+    artwork: "DOWNLOAD",
   },
   {
     id: "community",
-    title: "Music",
-    subtitle: "Community",
+    title: "Community",
+    description: "Connect through shared music and creativity.",
     icon: "people-outline" as const,
     accent: "#35C9BC",
-    type: "community",
+    artwork: "CONNECT",
   },
   {
     id: "reels",
-    title: "Song",
-    subtitle: "Reels",
+    title: "Music Reels",
+    description: "Discover new sounds through music videos.",
     icon: "play-circle-outline" as const,
     accent: "#83CFF5",
-    type: "reels",
+    artwork: "DISCOVER",
+  },
+  {
+    id: "space",
+    title: "Your Music Space",
+    description: "Keep your favourite discoveries together.",
+    icon: "headset-outline" as const,
+    accent: "#58D8E8",
+    artwork: "YOUR SPACE",
   },
 ];
 
-export default function WelcomeScreen() {
-  const { width, height } = useWindowDimensions();
+export default function OnboardingScreen() {
+  const [step, setStep] = useState(0);
 
-  // Animated waveform
-  const waveAnimations = useRef(
-    BAR_HEIGHTS.map(() => new Animated.Value(0.3))
-  ).current;
+  const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
+  const [selectedArtistIds, setSelectedArtistIds] = useState<string[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
 
-  // Floating cards
-  const floatAnimations = useRef(
+  const [artistLoading, setArtistLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  // Floating feature card animations.
+  const featureAnimations = useRef(
     FEATURES.map(() => new Animated.Value(0))
   ).current;
 
   useEffect(() => {
-    const waveLoops = waveAnimations.map((value, index) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(index * 35),
-          Animated.timing(value, {
-            toValue: 1,
-            duration: 350 + (index % 4) * 100,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: Platform.OS !== "web",
-          }),
-          Animated.timing(value, {
-            toValue: 0.25,
-            duration: 400 + (index % 3) * 100,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: Platform.OS !== "web",
-          }),
-        ])
-      )
-    );
-
-    const floatingLoops = floatAnimations.map((value, index) =>
+    const loops = featureAnimations.map((value, index) =>
       Animated.loop(
         Animated.sequence([
           Animated.timing(value, {
             toValue: 1,
-            duration: 1800 + index * 250,
+            duration: 1900 + index * 250,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: Platform.OS !== "web",
           }),
           Animated.timing(value, {
             toValue: 0,
-            duration: 1800 + index * 250,
+            duration: 1900 + index * 250,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: Platform.OS !== "web",
           }),
@@ -108,323 +124,521 @@ export default function WelcomeScreen() {
       )
     );
 
-    waveLoops.forEach((loop) => loop.start());
-    floatingLoops.forEach((loop) => loop.start());
+    loops.forEach((loop) => loop.start());
 
     return () => {
-      waveLoops.forEach((loop) => loop.stop());
-      floatingLoops.forEach((loop) => loop.stop());
+      loops.forEach((loop) => loop.stop());
     };
-  }, [waveAnimations, floatAnimations]);
+  }, [featureAnimations]);
 
-  const compact = height < 760;
-  const cardWidth = Math.min((width - 64) / 3, 118);
+  // Load a maximum of six artists for the selected mood.
+  useEffect(() => {
+    if (step !== 1 || !selectedMood) return;
+
+    let active = true;
+
+    async function loadArtists() {
+      setArtistLoading(true);
+      setError("");
+      setArtists([]);
+      setSelectedArtistIds([]);
+
+      try {
+        const result = await getArtistSpotlight(selectedMood!);
+
+        if (active) {
+          setArtists(result.slice(0, MAX_ARTISTS));
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load artists. Please try again."
+          );
+        }
+      } finally {
+        if (active) {
+          setArtistLoading(false);
+        }
+      }
+    }
+
+    loadArtists();
+
+    return () => {
+      active = false;
+    };
+  }, [step, selectedMood]);
+
+  const toggleArtist = (artistId: string) => {
+    setSelectedArtistIds((previous) =>
+      previous.includes(artistId)
+        ? previous.filter((id) => id !== artistId)
+        : [...previous, artistId]
+    );
+
+    setError("");
+  };
+
+  const handleContinue = () => {
+    setError("");
+
+    if (step === 0) {
+      if (!selectedMood) {
+        setError("Please choose a mood to continue.");
+        return;
+      }
+
+      setStep(1);
+      return;
+    }
+
+    if (step === 1) {
+      if (selectedArtistIds.length === 0) {
+        setError("Please select at least one artist.");
+        return;
+      }
+
+      setStep(2);
+    }
+  };
+
+  const handleBack = () => {
+    setError("");
+
+    if (step > 0) {
+      setStep((previous) => previous - 1);
+    } else {
+      router.back();
+    }
+  };
+
+  const handleComplete = async () => {
+    if (saving || !selectedMood) return;
+
+    setSaving(true);
+    setError("");
+
+    try {
+      await saveOnboarding({
+        selectedMood,
+        favoriteArtistIds: selectedArtistIds,
+      });
+
+      router.replace("/(tabs)");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to complete onboarding. Please try again."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const stepLabels = [
+    "Mood Discovery",
+    "Artist Spotlight",
+    "Meet VerseHana",
+  ];
 
   return (
-    <SafeAreaView
-      style={styles.safeArea}
-      onLayout={() => {
-        SplashScreen.hideAsync().catch(() => {});
-      }}
-    >
+    <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={["#061719", "#07191B", "#031011"]}
+        colors={["#061719", "#07191B", "#030707"]}
         locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Background glow */}
-      <View pointerEvents="none" style={styles.glowTop} />
-      <View pointerEvents="none" style={styles.glowBottom} />
+      <View pointerEvents="none" style={styles.topGlow} />
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          compact && styles.compactContent,
-        ]}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        {/* BRAND LOGO */}
-        <View style={styles.brandSection}>
-          <Image
-            source={require("../../assets/images/versehana-logo-transparent.png")}
-            style={[
-              styles.brandLogo,
-              compact && styles.compactLogo,
-            ]}
-            resizeMode="contain"
-            accessibilityLabel="VerseHana logo"
-          />
-        </View>
-
-        {/* FLOATING FEATURE CARDS */}
-        <View style={styles.featuresArea}>
-          <View style={styles.orbitGlow} />
-
-          <View style={styles.cardsRow}>
-            {FEATURES.map((feature, index) => {
-              const translateY = floatAnimations[index].interpolate({
-                inputRange: [0, 1],
-                outputRange: [8, -8],
-              });
-
-              return (
-                <Animated.View
-                  key={feature.id}
-                  style={[
-                    styles.featureCardWrapper,
-                    {
-                      width: cardWidth,
-                      transform: [
-                        { translateY },
-                        {
-                          rotate:
-                            index === 0
-                              ? "-5deg"
-                              : index === 2
-                                ? "5deg"
-                                : "0deg",
-                        },
-                      ],
-                    },
-                  ]}
-                >
-                  <LinearGradient
-                    colors={[
-                      "rgba(19,65,68,0.95)",
-                      "rgba(7,30,32,0.96)",
-                    ]}
-                    style={[
-                      styles.featureCard,
-                      { borderColor: `${feature.accent}75` },
-                    ]}
-                  >
-                    {/* CARD ART */}
-                    <View style={styles.cardArt}>
-                      {feature.type === "mood" && (
-                        <>
-                          <View style={styles.moodChipRow}>
-                            <Text style={styles.moodChip}>CHILL</Text>
-                            <Text style={styles.moodChipHappy}>
-                              HAPPY
-                            </Text>
-                          </View>
-
-                          <View style={styles.moodIconCircle}>
-                            <Ionicons
-                              name="happy"
-                              size={34}
-                              color={feature.accent}
-                            />
-                          </View>
-
-                          <Text style={styles.moodSmallText}>
-                            FIND YOUR MOOD
-                          </Text>
-                        </>
-                      )}
-
-                      {feature.type === "community" && (
-                        <>
-                          <View style={styles.communityIcon}>
-                            <Ionicons
-                              name="people"
-                              size={43}
-                              color={feature.accent}
-                            />
-                          </View>
-
-                          <View style={styles.avatarRow}>
-                            <View style={styles.avatar}>
-                              <Ionicons
-                                name="person"
-                                size={13}
-                                color="#C4F6EF"
-                              />
-                            </View>
-                            <View style={styles.avatar}>
-                              <Ionicons
-                                name="person"
-                                size={13}
-                                color="#A7DFF5"
-                              />
-                            </View>
-                            <View style={styles.avatar}>
-                              <Ionicons
-                                name="person"
-                                size={13}
-                                color="#E5C6F8"
-                              />
-                            </View>
-                          </View>
-                        </>
-                      )}
-
-                      {feature.type === "reels" && (
-                        <>
-                          <View style={styles.reelsArt}>
-                            <Ionicons
-                              name="musical-notes"
-                              size={32}
-                              color={feature.accent}
-                            />
-
-                            <View style={styles.playCircle}>
-                              <Ionicons
-                                name="play"
-                                size={21}
-                                color={colors.background}
-                              />
-                            </View>
-                          </View>
-
-                          <Text style={styles.reelsSmallText}>
-                            MUSIC • VIDEO
-                          </Text>
-                        </>
-                      )}
-                    </View>
-
-                    <View style={styles.cardText}>
-                      <Text style={styles.cardTitle}>
-                        {feature.title}
-                      </Text>
-                      <Text style={styles.cardSubtitle}>
-                        {feature.subtitle}
-                      </Text>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.cardBottomLine,
-                        { backgroundColor: feature.accent },
-                      ]}
-                    />
-                  </LinearGradient>
-                </Animated.View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* ANIMATED WAVEFORM */}
-        <View style={styles.waveArea}>
-          <View style={styles.waveLine} />
-
-          <View style={styles.waveform}>
-            {BAR_HEIGHTS.map((bar, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.waveBar,
-                  {
-                    height: bar,
-                    transform: [
-                      {
-                        scaleY: waveAnimations[index],
-                      },
-                    ],
-                    opacity: waveAnimations[index],
-                  },
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* HEADLINE */}
-        <View style={styles.headlineSection}>
-          <Text style={styles.headline}>
-            More than music.
+      <View style={styles.container}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <Text style={styles.brand}>
+            VERSE<Text style={styles.brandAccent}>HANA</Text>
           </Text>
 
-          <Text style={styles.headline}>
-            A place for your{" "}
-            <Text style={styles.headlineAccent}>
-              vibe.
-            </Text>
+          <Text style={styles.stepText}>
+            {String(step + 1).padStart(2, "0")} / 03
           </Text>
         </View>
 
-        {/* FEATURE LABELS */}
-        <View style={styles.featureLabels}>
-          <View style={styles.featureLabel}>
-            <Ionicons
-              name="compass-outline"
-              size={24}
-              color={colors.cyan}
+        {/* PROGRESS */}
+        <View style={styles.progressContainer}>
+          {[0, 1, 2].map((item) => (
+            <View
+              key={item}
+              style={[
+                styles.progressSegment,
+                item <= step && styles.progressActive,
+              ]}
             />
-            <Text style={styles.labelTitle}>Discover</Text>
-            <Text style={styles.labelSubtitle}>Your Vibe</Text>
-          </View>
-
-          <View style={styles.labelDivider} />
-
-          <View style={styles.featureLabel}>
-            <Ionicons
-              name="people-outline"
-              size={24}
-              color={colors.cyan}
-            />
-            <Text style={styles.labelTitle}>Connect</Text>
-            <Text style={styles.labelSubtitle}>With Community</Text>
-          </View>
-
-          <View style={styles.labelDivider} />
-
-          <View style={styles.featureLabel}>
-            <Ionicons
-              name="play-circle-outline"
-              size={24}
-              color={colors.cyan}
-            />
-            <Text style={styles.labelTitle}>Experience</Text>
-            <Text style={styles.labelSubtitle}>Music Differently</Text>
-          </View>
+          ))}
         </View>
 
-        {/* ACTION BUTTONS */}
-        <View style={styles.footer}>
-          <Pressable
-            onPress={() => router.push("/signup")}
-            style={({ pressed }) => [
-              styles.getStartedButton,
-              pressed && styles.buttonPressed,
-            ]}
-          >
-            <LinearGradient
-              colors={["#35C9BC", "#58D8E8"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.buttonGradient}
-            >
-              <Text style={styles.getStartedText}>
-                Get Started
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.sectionLabel}>
+            {stepLabels[step].toUpperCase()}
+          </Text>
+
+          {/* SCREEN 1: MOOD DISCOVERY */}
+          {step === 0 && (
+            <>
+              <Text style={styles.heading}>
+                What does your world feel like today?
               </Text>
 
-              <Ionicons
-                name="arrow-forward"
-                size={22}
-                color="#07191B"
-              />
-            </LinearGradient>
-          </Pressable>
+              <Text style={styles.subtitle}>
+                Choose one mood. We'll use it to shape your music discovery
+                experience.
+              </Text>
 
-          <Pressable
-            onPress={() => router.push("/login")}
-            style={styles.loginButton}
-          >
-            <Text style={styles.loginText}>
-              Already have an account?{" "}
-            </Text>
+              <Text style={styles.selectionHint}>
+                CHOOSE YOUR MOOD
+              </Text>
 
-            <Text style={styles.loginAccent}>
-              Log In
-            </Text>
-          </Pressable>
+              <View style={styles.moodGrid}>
+                {MOODS.map((mood) => {
+                  const selected = selectedMood === mood.id;
+
+                  return (
+                    <Pressable
+                      key={mood.id}
+                      onPress={() => {
+                        setSelectedMood(mood.id);
+                        setError("");
+                      }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      style={[
+                        styles.moodCard,
+                        selected && styles.cardSelected,
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={
+                          selected
+                            ? ["#17413D", "#102020"]
+                            : ["#102020", "#0B1716"]
+                        }
+                        style={styles.moodGradient}
+                      >
+                        <Text style={styles.moodEmoji}>
+                          {mood.emoji}
+                        </Text>
+
+                        <View style={styles.moodTextContainer}>
+                          <Text style={styles.moodTitle}>
+                            {mood.title}
+                          </Text>
+
+                          <Text style={styles.moodDescription}>
+                            {mood.description}
+                          </Text>
+                        </View>
+
+                        {selected && (
+                          <Text style={styles.selectedCheck}>✓</Text>
+                        )}
+                      </LinearGradient>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {/* SCREEN 2: ARTIST SPOTLIGHT */}
+          {step === 1 && (
+            <>
+              <Text style={styles.heading}>
+                Artists that match your mood.
+              </Text>
+
+              <Text style={styles.subtitle}>
+                Discover artists picked around your{" "}
+                {selectedMood ?? "selected"} mood. Choose your favourites.
+              </Text>
+
+              <View style={styles.artistHeader}>
+                <Text style={styles.selectionHint}>
+                  ARTIST SPOTLIGHT
+                </Text>
+
+                <Text style={styles.artistCount}>
+                  {selectedArtistIds.length} selected
+                </Text>
+              </View>
+
+              {artistLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator
+                    size="large"
+                    color={COLORS.primary}
+                  />
+
+                  <Text style={styles.loadingText}>
+                    Finding artists for your mood...
+                  </Text>
+                </View>
+              ) : artists.length > 0 ? (
+                <View style={styles.artistGrid}>
+                  {artists.slice(0, MAX_ARTISTS).map((artist) => {
+                    const selected = selectedArtistIds.includes(artist.id);
+
+                    return (
+                      <Pressable
+                        key={artist.id}
+                        onPress={() => toggleArtist(artist.id)}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: selected }}
+                        style={[
+                          styles.artistCard,
+                          selected && styles.artistCardSelected,
+                        ]}
+                      >
+                        <View style={styles.artistImageContainer}>
+                          {artist.imageUrl ? (
+                            <Image
+                              source={{ uri: artist.imageUrl }}
+                              style={styles.artistImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.artistImageFallback}>
+                              <Text style={styles.artistFallbackText}>
+                                {artist.name.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+
+                          <View
+                            style={[
+                              styles.artistCheck,
+                              selected && styles.artistCheckSelected,
+                            ]}
+                          >
+                            {selected && (
+                              <Text style={styles.artistCheckText}>
+                                ✓
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+
+                        <Text
+                          style={styles.artistName}
+                          numberOfLines={2}
+                        >
+                          {artist.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : !error ? (
+                <Text style={styles.emptyText}>
+                  No artists are available for this mood right now.
+                </Text>
+              ) : null}
+
+              {error && !artistLoading && (
+                <Pressable
+                  onPress={() => setStep(0)}
+                  style={styles.retryButton}
+                >
+                  <Text style={styles.retryText}>
+                    Go back and choose another mood
+                  </Text>
+                </Pressable>
+              )}
+            </>
+          )}
+
+          {/* SCREEN 3: MEET VERSEHANA */}
+          {step === 2 && (
+            <>
+              <Text style={styles.heading}>
+                A little more than just music.
+              </Text>
+
+              <Text style={styles.subtitle}>
+                Discover a space made for expressing yourself,
+                connecting and experiencing music differently.
+              </Text>
+
+              <View style={styles.featureGrid}>
+                {FEATURES.map((feature, index) => {
+                  const translateY = featureAnimations[index].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [7, -7],
+                  });
+
+                  const rotation =
+                    index % 2 === 0 ? "-2deg" : "2deg";
+
+                  return (
+                    <Animated.View
+                      key={feature.id}
+                      style={[
+                        styles.featureTile,
+                        {
+                          transform: [
+                            { translateY },
+                            { rotate: rotation },
+                          ],
+                        },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={[
+                          "#174447",
+                          "#0B2021",
+                          "#081414",
+                        ]}
+                        style={[
+                          styles.featureGradient,
+                          {
+                            borderColor: `${feature.accent}75`,
+                          },
+                        ]}
+                      >
+                        <View style={styles.featureArtwork}>
+                          <View
+                            style={[
+                              styles.artworkGlow,
+                              {
+                                backgroundColor: feature.accent,
+                              },
+                            ]}
+                          />
+
+                          <View
+                            style={[
+                              styles.artworkCircle,
+                              {
+                                borderColor: `${feature.accent}85`,
+                              },
+                            ]}
+                          >
+                            <Ionicons
+                              name={feature.icon}
+                              size={58}
+                              color={feature.accent}
+                            />
+                          </View>
+
+                          <View style={styles.artworkDecoration}>
+                            <Ionicons
+                              name="musical-notes"
+                              size={19}
+                              color={feature.accent}
+                            />
+                          </View>
+
+                          <Text
+                            style={[
+                              styles.artworkLabel,
+                              { color: feature.accent },
+                            ]}
+                          >
+                            {feature.artwork}
+                          </Text>
+                        </View>
+
+                        <View style={styles.featureCardContent}>
+                          <Text style={styles.featureTitle}>
+                            {feature.title}
+                          </Text>
+
+                          <Text style={styles.featureDescription}>
+                            {feature.description}
+                          </Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.featureBottomLine,
+                            {
+                              backgroundColor: feature.accent,
+                            },
+                          ]}
+                        />
+                      </LinearGradient>
+                    </Animated.View>
+                  );
+                })}
+              </View>
+
+              <View style={styles.welcomeNote}>
+                <Text style={styles.welcomeEmoji}>✦</Text>
+
+                <Text style={styles.welcomeText}>
+                  Your journey. Your mood. Your VerseHana.
+                </Text>
+              </View>
+            </>
+          )}
+
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
+        </ScrollView>
+
+        {/* FOOTER */}
+        <View style={styles.footer}>
+          <View style={styles.footerButtons}>
+            <Pressable
+              onPress={handleBack}
+              disabled={saving}
+              style={styles.backButton}
+            >
+              <Text style={styles.backArrow}>←</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={
+                step === 2 ? handleComplete : handleContinue
+              }
+              disabled={saving || (step === 1 && artistLoading)}
+              style={[
+                styles.continueButton,
+                (saving || (step === 1 && artistLoading)) &&
+                  styles.buttonDisabled,
+              ]}
+            >
+              {saving ? (
+                <ActivityIndicator color={COLORS.background} />
+              ) : (
+                <>
+                  <Text style={styles.continueText}>
+                    {step === 2
+                      ? "Let's Begin"
+                      : step === 1
+                        ? "Continue"
+                        : "Discover Artists"}
+                  </Text>
+
+                  <Text style={styles.continueArrow}>→</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+
+          <Text style={styles.footerHint}>
+            {step === 2
+              ? "Your VerseHana experience starts here."
+              : "You can explore more after onboarding."}
+          </Text>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -432,382 +646,469 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: COLORS.background,
+  },
+
+  container: {
+    flex: 1,
+    paddingHorizontal: 23,
+  },
+
+  topGlow: {
+    position: "absolute",
+    top: -150,
+    right: -100,
+    width: 280,
+    height: 280,
+    borderRadius: 200,
+    backgroundColor: "#087D88",
+    opacity: 0.17,
+  },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 12,
+    paddingBottom: 22,
+  },
+
+  brand: {
+    color: COLORS.text,
+    fontSize: 19,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+
+  brandAccent: {
+    color: COLORS.primary,
+  },
+
+  stepText: {
+    color: COLORS.secondary,
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 1,
+  },
+
+  progressContainer: {
+    flexDirection: "row",
+    gap: 7,
+    marginBottom: 30,
+  },
+
+  progressSegment: {
+    flex: 1,
+    height: 4,
+    borderRadius: 10,
+    backgroundColor: COLORS.border,
+  },
+
+  progressActive: {
+    backgroundColor: COLORS.primary,
+  },
+
+  scroll: {
+    flex: 1,
   },
 
   scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 19,
-    paddingTop: 3,
-    paddingBottom: 20,
-    justifyContent: "space-between",
+    paddingBottom: 22,
   },
 
-  compactContent: {
-    paddingTop: 0,
-    paddingBottom: 10,
-  },
-
-  glowTop: {
-    position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: "#087D88",
-    opacity: 0.15,
-    top: -150,
-    alignSelf: "center",
-  },
-
-  glowBottom: {
-    position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: "#087D88",
-    opacity: 0.12,
-    bottom: -170,
-    right: -150,
-  },
-
-  // BRAND
-  brandSection: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 5,
-  },
-
-  brandLogo: {
-    width: 190,
-    height: 190,
-    marginTop: -12,
-    marginBottom: -19,
-  },
-
-  compactLogo: {
-    width: 150,
-    height: 150,
-    marginTop: -8,
-    marginBottom: -17,
-  },
-
-  // FLOATING CARDS
-  featuresArea: {
-    minHeight: 188,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 5,
-  },
-
-  orbitGlow: {
-    position: "absolute",
-    width: "105%",
-    height: 65,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: "rgba(53,201,188,0.28)",
-    backgroundColor: "rgba(53,201,188,0.035)",
-    transform: [{ rotate: "-3deg" }],
-  },
-
-  cardsRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  featureCardWrapper: {
-    maxWidth: 118,
-  },
-
-  featureCard: {
-    height: 160,
-    width: "100%",
-    borderRadius: 19,
-    borderWidth: 1,
-    paddingHorizontal: 7,
-    paddingTop: 12,
-    paddingBottom: 9,
-    justifyContent: "space-between",
-    alignItems: "center",
-    overflow: "hidden",
-    shadowColor: colors.primary,
-    shadowOpacity: 0.13,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-
-  cardArt: {
-    flex: 1,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  moodChipRow: {
-    flexDirection: "row",
-    gap: 4,
-    marginBottom: 6,
-  },
-
-  moodChip: {
-    color: "#B8F4ED",
-    fontSize: 7,
-    fontWeight: "700",
-    borderWidth: 1,
-    borderColor: "#35C9BC",
-    borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-  },
-
-  moodChipHappy: {
-    color: "#F6BC57",
-    fontSize: 7,
-    fontWeight: "700",
-    borderWidth: 1,
-    borderColor: "#A88B4C",
-    borderRadius: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 3,
-  },
-
-  moodIconCircle: {
-    width: 59,
-    height: 59,
-    borderRadius: 30,
-    backgroundColor: "rgba(88,216,232,0.13)",
-    borderWidth: 1,
-    borderColor: "rgba(88,216,232,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  moodSmallText: {
-    color: colors.textSecondary,
-    fontSize: 7,
-    fontWeight: "700",
-    letterSpacing: 1,
-    marginTop: 8,
-  },
-
-  communityIcon: {
-    width: 65,
-    height: 60,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 17,
-    backgroundColor: "rgba(53,201,188,0.10)",
-  },
-
-  avatarRow: {
-    flexDirection: "row",
-    marginTop: 8,
-  },
-
-  avatar: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#234D50",
-    borderWidth: 1,
-    borderColor: "#58D8E8",
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: -2,
-  },
-
-  reelsArt: {
-    flex: 1,
-    width: "100%",
-    borderRadius: 12,
-    backgroundColor: "rgba(88,216,232,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  playCircle: {
-    position: "absolute",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  reelsSmallText: {
-    color: colors.textSecondary,
-    fontSize: 7,
-    fontWeight: "700",
-    letterSpacing: 1,
-    marginTop: 5,
-  },
-
-  cardText: {
-    alignItems: "center",
-    marginTop: 5,
-  },
-
-  cardTitle: {
-    color: colors.text,
+  sectionLabel: {
+    color: COLORS.primary,
     fontSize: 11,
     fontWeight: "700",
-    textAlign: "center",
+    letterSpacing: 2,
+    marginBottom: 13,
   },
 
-  cardSubtitle: {
-    color: colors.cyan,
+  heading: {
+    color: COLORS.text,
+    fontSize: 28,
+    fontWeight: "800",
+    lineHeight: 36,
+    marginBottom: 10,
+  },
+
+  subtitle: {
+    color: COLORS.secondary,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 27,
+  },
+
+  selectionHint: {
+    color: "#718B88",
     fontSize: 10,
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 2,
-  },
-
-  cardBottomLine: {
-    width: 28,
-    height: 2,
-    borderRadius: 2,
-    marginTop: 7,
-    opacity: 0.8,
-  },
-
-  // WAVEFORM
-  waveArea: {
-    height: 65,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
-    marginBottom: 2,
-  },
-
-  waveLine: {
-    position: "absolute",
-    width: "110%",
-    height: 1,
-    backgroundColor: "rgba(53,201,188,0.16)",
-  },
-
-  waveform: {
-    height: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-
-  waveBar: {
-    width: 3,
-    borderRadius: 5,
-    backgroundColor: colors.primary,
-  },
-
-  // HEADLINE
-  headlineSection: {
-    alignItems: "center",
-    marginTop: 3,
-    marginBottom: 16,
-  },
-
-  headline: {
-    color: colors.text,
-    fontSize: 27,
-    lineHeight: 35,
     fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: -0.7,
+    letterSpacing: 1.5,
+    marginBottom: 13,
   },
 
-  headlineAccent: {
-    color: colors.cyan,
+  moodGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 11,
   },
 
-  // FEATURE LABELS
-  featureLabels: {
+  moodCard: {
+    width: "48%",
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: "hidden",
+  },
+
+  cardSelected: {
+    borderColor: COLORS.primary,
+  },
+
+  moodGradient: {
+    minHeight: 105,
+    padding: 13,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
-    marginBottom: 23,
+    gap: 10,
   },
 
-  featureLabel: {
+  moodEmoji: {
+    fontSize: 27,
+  },
+
+  moodTextContainer: {
+    flex: 1,
+  },
+
+  moodTitle: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  moodDescription: {
+    color: COLORS.secondary,
+    fontSize: 10,
+    marginTop: 4,
+  },
+
+  selectedCheck: {
+    color: COLORS.primary,
+    fontSize: 17,
+    fontWeight: "800",
+    position: "absolute",
+    top: 7,
+    right: 9,
+  },
+
+  artistHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  artistCount: {
+    color: COLORS.primary,
+    fontSize: 12,
+    marginBottom: 13,
+  },
+
+  artistGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 15,
+  },
+
+  artistCard: {
+    width: "48%",
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    padding: 9,
+    alignItems: "center",
+    gap: 10,
+  },
+
+  artistCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.selected,
+  },
+
+  artistImageContainer: {
+    width: "100%",
+    height: 125,
+    borderRadius: 11,
+    overflow: "hidden",
+    position: "relative",
+    backgroundColor: "#1B3936",
+  },
+
+  artistImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  artistImageFallback: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
   },
 
-  labelTitle: {
-    color: colors.text,
-    fontSize: 11,
-    fontWeight: "700",
-    marginTop: 5,
-    textAlign: "center",
-  },
-
-  labelSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 9,
-    textAlign: "center",
-  },
-
-  labelDivider: {
-    height: 47,
-    width: 1,
-    backgroundColor: colors.border,
-  },
-
-  // BUTTONS
-  footer: {
-    gap: 14,
-  },
-
-  getStartedButton: {
-    borderRadius: 18,
-    overflow: "hidden",
-    shadowColor: colors.primary,
-    shadowOpacity: 0.23,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 5,
-  },
-
-  buttonGradient: {
-    height: 57,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 13,
-  },
-
-  getStartedText: {
-    color: colors.background,
-    fontSize: 16,
+  artistFallbackText: {
+    color: COLORS.primary,
+    fontSize: 32,
     fontWeight: "800",
   },
 
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-
-  loginButton: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-
-  loginText: {
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-
-  loginAccent: {
-    color: colors.cyan,
+  artistName: {
+    color: COLORS.text,
     fontSize: 13,
     fontWeight: "700",
+    textAlign: "center",
+    minHeight: 34,
+  },
+
+  artistCheck: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    backgroundColor: "rgba(3,7,7,0.75)",
+    borderWidth: 1,
+    borderColor: "#A3B8B8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  artistCheckSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+
+  artistCheckText: {
+    color: COLORS.background,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
+  loadingContainer: {
+    minHeight: 190,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+
+  loadingText: {
+    color: COLORS.secondary,
+    fontSize: 13,
+  },
+
+  emptyText: {
+    color: COLORS.secondary,
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 30,
+  },
+
+  retryButton: {
+    padding: 13,
+    alignItems: "center",
+  },
+
+  retryText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  // FINAL SCREEN: FLOATING FEATURE CARDS
+  featureGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 17,
+    marginTop: 5,
+  },
+
+  featureTile: {
+    width: "48%",
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+
+  featureGradient: {
+    minHeight: 220,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 11,
+    justifyContent: "space-between",
+    overflow: "hidden",
+  },
+
+  featureArtwork: {
+    height: 125,
+    borderRadius: 14,
+    backgroundColor: "rgba(53,201,188,0.07)",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    position: "relative",
+  },
+
+  artworkGlow: {
+    position: "absolute",
+    width: 105,
+    height: 105,
+    borderRadius: 60,
+    opacity: 0.12,
+  },
+
+  artworkCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1,
+    backgroundColor: "rgba(53,201,188,0.09)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  artworkDecoration: {
+    position: "absolute",
+    top: 12,
+    right: 13,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(53,201,188,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  artworkLabel: {
+    position: "absolute",
+    bottom: 10,
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+
+  featureCardContent: {
+    paddingTop: 12,
+    paddingBottom: 5,
+  },
+
+  featureTitle: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+
+  featureDescription: {
+    color: COLORS.secondary,
+    fontSize: 10,
+    lineHeight: 16,
+  },
+
+  featureBottomLine: {
+    width: 32,
+    height: 2,
+    borderRadius: 3,
+    alignSelf: "center",
+    marginTop: 5,
+    opacity: 0.85,
+  },
+
+  welcomeNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    marginTop: 23,
+    paddingVertical: 15,
+  },
+
+  welcomeEmoji: {
+    color: COLORS.primary,
+    fontSize: 19,
+  },
+
+  welcomeText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  errorText: {
+    color: COLORS.error,
+    fontSize: 13,
+    marginTop: 15,
+    lineHeight: 19,
+  },
+
+  footer: {
+    paddingTop: 13,
+    paddingBottom: 10,
+  },
+
+  footerButtons: {
+    flexDirection: "row",
+    gap: 11,
+  },
+
+  backButton: {
+    width: 54,
+    height: 54,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  backArrow: {
+    color: COLORS.primary,
+    fontSize: 24,
+  },
+
+  continueButton: {
+    flex: 1,
+    height: 54,
+    backgroundColor: COLORS.primary,
+    borderRadius: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+
+  continueText: {
+    color: COLORS.background,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+
+  continueArrow: {
+    color: COLORS.background,
+    fontSize: 19,
+    fontWeight: "700",
+  },
+
+  footerHint: {
+    color: "#718B88",
+    textAlign: "center",
+    fontSize: 11,
+    marginTop: 12,
   },
 });
