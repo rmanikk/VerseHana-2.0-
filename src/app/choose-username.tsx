@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { VerseHanaLoader } from "@/components/ui/versehana-loader";
 
 import {
   ActivityIndicator,
@@ -228,8 +229,8 @@ export default function ChooseUsernameScreen() {
                 style={styles.submitGradient}
               >
                 {loading ? (
-                  <ActivityIndicator color="#06181B" />
-                ) : (
+  <VerseHanaLoader size="xs" />
+) : (
                   <>
                     <Text style={styles.submitText}>
                       Create My Account

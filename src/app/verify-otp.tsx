@@ -3,11 +3,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState, type ElementRef } from "react";
+import { VerseHanaLoader } from "@/components/ui/versehana-loader";
 
 import {
-  ActivityIndicator,
-  Animated,
-  Easing,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -21,10 +19,8 @@ import {
 } from "react-native";
 
 import { API } from "@/constants/api";
-import { Colors } from "@/constants/theme";
 import { authStorage } from "@/services/auth-storage";
 
-const colors = Colors.dark;
 const RESEND_COOLDOWN = 60;
 
 type OtpStatus = "idle" | "checking" | "valid" | "invalid";
@@ -33,7 +29,6 @@ export default function VerifyOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
 
   const inputRef = useRef<ElementRef<typeof TextInput>>(null);
-  const progressAnim = useRef(new Animated.Value(0)).current;
   const verificationAttemptRef = useRef(false);
   const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,27 +36,20 @@ export default function VerifyOtpScreen() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(RESEND_COOLDOWN);
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
 
   const normalizedEmail = (email || "").trim().toLowerCase();
 
-  // Listen to animated verification progress.
+  // Clear pending navigation timeout when screen unmounts.
   useEffect(() => {
-    const listener = progressAnim.addListener(({ value }) => {
-      setProgress(Math.round(value));
-    });
-
     return () => {
-      progressAnim.removeListener(listener);
-
       if (navigationTimeoutRef.current) {
         clearTimeout(navigationTimeoutRef.current);
       }
     };
-  }, [progressAnim]);
+  }, []);
 
   // Resend countdown.
   useEffect(() => {
@@ -81,37 +69,6 @@ export default function VerifyOtpScreen() {
     return `${String(minutes).padStart(2, "0")}:${String(
       remainingSeconds,
     ).padStart(2, "0")}`;
-  };
-
-  const startProgress = () => {
-    progressAnim.stopAnimation();
-    progressAnim.setValue(0);
-
-    Animated.timing(progressAnim, {
-      toValue: 92,
-      duration: 4500,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const completeProgress = () => {
-    return new Promise<void>((resolve) => {
-      progressAnim.stopAnimation();
-
-      Animated.timing(progressAnim, {
-        toValue: 100,
-        duration: 350,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start(() => resolve());
-    });
-  };
-
-  const resetProgress = () => {
-    progressAnim.stopAnimation();
-    progressAnim.setValue(0);
-    setProgress(0);
   };
 
   // Automatically verify the completed six-digit code.
@@ -142,9 +99,6 @@ export default function VerifyOtpScreen() {
 
     Keyboard.dismiss();
     setLoading(true);
-    startProgress();
-
-    let verified = false;
 
     try {
       const response = await fetch(API.auth.verifyEmail, {
@@ -178,10 +132,7 @@ export default function VerifyOtpScreen() {
         data.refreshToken,
       );
 
-      verified = true;
       setOtpStatus("valid");
-
-      await completeProgress();
 
       setMessage("Your email has been verified successfully!");
 
@@ -195,15 +146,11 @@ export default function VerifyOtpScreen() {
       setError("Unable to connect to VerseHana. Please try again.");
     } finally {
       verificationAttemptRef.current = false;
-
-      if (!verified) {
-        resetProgress();
-      }
-
       setLoading(false);
     }
   };
 
+  // Resend verification code.
   const handleResend = async () => {
     if (loading || resending || countdown > 0) return;
 
@@ -259,6 +206,7 @@ export default function VerifyOtpScreen() {
     }
   };
 
+  // Render six OTP input boxes.
   const renderOtpBoxes = () => {
     return (
       <Pressable
@@ -449,38 +397,14 @@ export default function VerifyOtpScreen() {
               </View>
             ) : null}
 
-            {/* Processing percentage */}
+            {/* VerseHana verification loader */}
             {loading && (
               <View style={styles.progressCard}>
-                <View style={styles.progressHeader}>
-                  <View style={styles.progressTitleRow}>
-                    <ActivityIndicator
-                      size="small"
-                      color="#49D9D4"
-                    />
-                    <Text style={styles.progressTitle}>
-                      Verifying your code
-                    </Text>
-                  </View>
+                <VerseHanaLoader size="md" />
 
-                  <Text style={styles.progressPercentage}>
-                    {progress}%
-                  </Text>
-                </View>
-
-                <View style={styles.progressTrack}>
-                  <Animated.View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: progressAnim.interpolate({
-                          inputRange: [0, 100],
-                          outputRange: ["0%", "100%"],
-                        }),
-                      },
-                    ]}
-                  />
-                </View>
+                <Text style={styles.progressTitle}>
+                  Verifying your code
+                </Text>
 
                 <Text style={styles.progressSubtitle}>
                   Securing your VerseHana account...
@@ -515,10 +439,7 @@ export default function VerifyOtpScreen() {
               style={styles.resendButton}
             >
               {resending ? (
-                <ActivityIndicator
-                  size="small"
-                  color="#49D9D4"
-                />
+                <VerseHanaLoader size="xs" />
               ) : countdown > 0 ? (
                 <Text style={styles.timerText}>
                   Resend code in{" "}
@@ -798,51 +719,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#24504B",
     borderRadius: 17,
-    padding: 16,
+    padding: 20,
     gap: 13,
-  },
-
-  progressHeader: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  progressTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
   },
 
   progressTitle: {
     color: "#D8EBE8",
     fontSize: 13,
     fontWeight: "600",
-  },
-
-  progressPercentage: {
-    color: "#49D9D4",
-    fontSize: 19,
-    fontWeight: "800",
-    fontVariant: ["tabular-nums"],
-  },
-
-  progressTrack: {
-    height: 6,
-    backgroundColor: "#233C39",
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#49D9D4",
-    borderRadius: 10,
+    textAlign: "center",
   },
 
   progressSubtitle: {
     color: "#78918E",
     fontSize: 11,
+    textAlign: "center",
   },
 
   resendSection: {

@@ -3,6 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
+import { VerseHanaLoader } from "@/components/ui/versehana-loader";
+
 import {
   ActivityIndicator,
   Animated,
@@ -381,10 +383,7 @@ export default function OnboardingScreen() {
 
               {artistLoading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator
-                    size="large"
-                    color={COLORS.primary}
-                  />
+                  <VerseHanaLoader size="sm" />
 
                   <Text style={styles.loadingText}>
                     Finding artists for your mood...
@@ -617,7 +616,7 @@ export default function OnboardingScreen() {
               ]}
             >
               {saving ? (
-                <ActivityIndicator color={COLORS.background} />
+                <VerseHanaLoader size="xs" />
               ) : (
                 <>
                   <Text style={styles.continueText}>

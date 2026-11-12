@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
+import { VerseHanaLoader } from "@/components/ui/versehana-loader";
 
 import {
   ActivityIndicator,
@@ -261,8 +262,8 @@ export default function LoginScreen() {
                 style={styles.submitGradient}
               >
                 {loading ? (
-                  <ActivityIndicator color="#06181B" />
-                ) : (
+  <VerseHanaLoader size="xs" />
+) : (
                   <Text style={styles.submitText}>Sign In</Text>
                 )}
               </LinearGradient>
@@ -288,8 +289,8 @@ export default function LoginScreen() {
               }}
             >
               {loadingProvider === "google" ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
+  <VerseHanaLoader size="xs" />
+) : (
                 <>
                   <Ionicons
                     name="logo-google"
@@ -313,8 +314,8 @@ export default function LoginScreen() {
               }}
             >
               {loadingProvider === "facebook" ? (
-                <ActivityIndicator color="#1877F2" />
-              ) : (
+  <VerseHanaLoader size="xs" />
+) : (
                 <>
                   <Ionicons
                     name="logo-facebook"

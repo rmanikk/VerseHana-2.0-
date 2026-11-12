@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-type LoaderSize = "sm" | "md" | "lg";
+type LoaderSize = "xs" | "sm" | "md" | "lg";
 
 interface VerseHanaLoaderProps {
   size?: LoaderSize;
@@ -16,6 +16,7 @@ interface VerseHanaLoaderProps {
 }
 
 const SIZES: Record<LoaderSize, number> = {
+  xs: 24,
   sm: 48,
   md: 112,
   lg: 200,
@@ -161,7 +162,7 @@ export function VerseHanaLoader({
               width: ringSize,
               height: ringSize,
               borderRadius: ringSize / 2,
-              borderWidth: size === "sm" ? 1 : 1.5,
+              borderWidth: size === "xs" ? 1 : size === "sm" ? 1.2 : 1.5,
             },
           ]}
         />
@@ -175,7 +176,7 @@ export function VerseHanaLoader({
               width: ringSize,
               height: ringSize,
               borderRadius: ringSize / 2,
-              borderWidth: size === "sm" ? 2 : 2.5,
+              borderWidth: size === "xs" ? 1.5 : size === "sm" ? 2 : 2.5,
               transform: [{ rotate }],
             },
           ]}
