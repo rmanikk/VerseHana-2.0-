@@ -45,11 +45,12 @@ export default function RootLayout() {
 
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="signup" />
           <Stack.Screen name="login" />
+          <Stack.Screen name="signup" />
           <Stack.Screen name="verify-otp" />
           <Stack.Screen name="choose-username" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(tabs)" />
         </Stack>
 
         {rootReady && showAnimatedSplash && (
