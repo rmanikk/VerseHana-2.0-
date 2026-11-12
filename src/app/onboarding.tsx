@@ -162,15 +162,17 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleBack = () => {
-    setError("");
+ const handleBack = () => {
+  setError("");
 
-    if (step > 0) {
-      setStep((previous) => previous - 1);
-    } else {
-      router.back();
-    }
-  };
+  if (step > 0) {
+    setStep((previous) => previous - 1);
+  } else if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace("/login");
+  }
+};
 
   const handleComplete = async () => {
     if (saving || !selectedMood) return;

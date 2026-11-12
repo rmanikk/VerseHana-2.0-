@@ -306,19 +306,19 @@ export default function VerifyOtpScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Back navigation */}
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-          >
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color="#E8F8F6"
-            />
-          </Pressable>
+         {/* Back navigation */}
+<Pressable
+  onPress={() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/signup");
+    }
+  }}
+  style={styles.backButton}
+  accessibilityRole="button"
+  accessibilityLabel="Go back"
+></Pressable>
 
           {/* Header illustration */}
           <View style={styles.hero}>
