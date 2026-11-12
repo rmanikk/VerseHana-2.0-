@@ -84,10 +84,9 @@ function getUsernameError(value: string): string | undefined {
     ),
   );
 
-  if (isBlocked) {
-    return "Please choose a different username.";
-  }
-
+ if (isBlocked) {
+  return "Please use an appropriate username.";
+}
   return undefined;
 }
 

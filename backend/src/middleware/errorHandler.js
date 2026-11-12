@@ -1,3 +1,4 @@
+
 const errorHandler = (error, req, res, next) => {
   console.error(error);
 
@@ -9,6 +10,7 @@ const errorHandler = (error, req, res, next) => {
       process.env.NODE_ENV === "production"
         ? "Something went wrong."
         : error.message,
+    ...(error.code && { code: error.code }),
   });
 };
 

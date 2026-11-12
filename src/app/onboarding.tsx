@@ -1,11 +1,15 @@
 
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -52,29 +56,36 @@ const MOODS: {
 
 const FEATURES = [
   {
-    emoji: "⬇️",
+    id: "downloads",
     title: "Offline Downloads",
-    description: "Enjoy your saved music anywhere.",
+    description: "Your favourite music, wherever you go.",
+    icon: "cloud-download-outline" as const,
+    accent: "#58D8E8",
+    artwork: "DOWNLOAD",
   },
   {
-    emoji: "💬",
+    id: "community",
     title: "Community",
-    description: "Connect through shared thoughts and creativity.",
+    description: "Connect through shared music and creativity.",
+    icon: "people-outline" as const,
+    accent: "#35C9BC",
+    artwork: "CONNECT",
   },
   {
-    emoji: "🎬",
+    id: "reels",
     title: "Music Reels",
-    description: "Discover songs through short-form video.",
+    description: "Discover new sounds through music videos.",
+    icon: "play-circle-outline" as const,
+    accent: "#83CFF5",
+    artwork: "DISCOVER",
   },
   {
-    emoji: "🎧",
+    id: "space",
     title: "Your Music Space",
     description: "Keep your favourite discoveries together.",
-  },
-  {
-    emoji: "✨",
-    title: "Personalized Discovery",
-    description: "Find something that resonates with you.",
+    icon: "headset-outline" as const,
+    accent: "#58D8E8",
+    artwork: "YOUR SPACE",
   },
 ];
 
@@ -88,6 +99,38 @@ export default function OnboardingScreen() {
   const [artistLoading, setArtistLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Floating feature-card animations for the final onboarding screen.
+  const featureAnimations = useRef(
+    FEATURES.map(() => new Animated.Value(0))
+  ).current;
+
+  useEffect(() => {
+    const loops = featureAnimations.map((value, index) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(value, {
+            toValue: 1,
+            duration: 1900 + index * 250,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: Platform.OS !== "web",
+          }),
+          Animated.timing(value, {
+            toValue: 0,
+            duration: 1900 + index * 250,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: Platform.OS !== "web",
+          }),
+        ])
+      )
+    );
+
+    loops.forEach((loop) => loop.start());
+
+    return () => {
+      loops.forEach((loop) => loop.stop());
+    };
+  }, [featureAnimations]);
 
   // Load a maximum of six artists for the selected mood.
   useEffect(() => {
@@ -162,17 +205,17 @@ export default function OnboardingScreen() {
     }
   };
 
- const handleBack = () => {
-  setError("");
+  const handleBack = () => {
+    setError("");
 
-  if (step > 0) {
-    setStep((previous) => previous - 1);
-  } else if (router.canGoBack()) {
-    router.back();
-  } else {
-    router.replace("/login");
-  }
-};
+    if (step > 0) {
+      setStep((previous) => previous - 1);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/login");
+    }
+  };
 
   const handleComplete = async () => {
     if (saving || !selectedMood) return;
@@ -198,7 +241,11 @@ export default function OnboardingScreen() {
     }
   };
 
-  const stepLabels = ["Mood Discovery", "Artist Spotlight", "Meet VerseHana"];
+  const stepLabels = [
+    "Mood Discovery",
+    "Artist Spotlight",
+    "Meet VerseHana",
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -405,41 +452,98 @@ export default function OnboardingScreen() {
               </Text>
 
               <Text style={styles.subtitle}>
-                Welcome to a space made for discovering, expressing and
-                connecting through music.
+                Discover a space made for expressing yourself,
+                connecting and experiencing music differently.
               </Text>
 
               <View style={styles.featureGrid}>
-                {FEATURES.map((feature, index) => (
-                  <View
-                    key={feature.title}
-                    style={[
-                      styles.featureTile,
-                      index === 4 && styles.featureTileLast,
-                    ]}
-                  >
-                    <View style={styles.featureIconBox}>
-                      <Text style={styles.featureEmoji}>
-                        {feature.emoji}
-                      </Text>
-                    </View>
+                {FEATURES.map((feature, index) => {
+                  const translateY = featureAnimations[index].interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [7, -7],
+                  });
 
-                    <Text style={styles.featureTitle}>
-                      {feature.title}
-                    </Text>
+                  const rotation = index % 2 === 0 ? "-2deg" : "2deg";
 
-                    <Text style={styles.featureDescription}>
-                      {feature.description}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+                  return (
+                    <Animated.View
+                      key={feature.id}
+                      style={[
+                        styles.featureTile,
+                        {
+                          transform: [
+                            { translateY },
+                            { rotate: rotation },
+                          ],
+                        },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={["#174447", "#0B2021", "#081414"]}
+                        style={[
+                          styles.featureGradient,
+                          { borderColor: `${feature.accent}75` },
+                        ]}
+                      >
+                        <View style={styles.featureArtwork}>
+                          <View
+                            style={[
+                              styles.artworkGlow,
+                              { backgroundColor: feature.accent },
+                            ]}
+                          />
 
-              <View style={styles.welcomeNote}>
-                <Text style={styles.welcomeEmoji}>✦</Text>
-                <Text style={styles.welcomeText}>
-                  Your journey. Your mood. Your VerseHana.
-                </Text>
+                          <View
+                            style={[
+                              styles.artworkCircle,
+                              { borderColor: `${feature.accent}85` },
+                            ]}
+                          >
+                            <Ionicons
+                              name={feature.icon}
+                              size={58}
+                              color={feature.accent}
+                            />
+                          </View>
+
+                          <View style={styles.artworkDecoration}>
+                            <Ionicons
+                              name="musical-notes"
+                              size={19}
+                              color={feature.accent}
+                            />
+                          </View>
+
+                          <Text
+                            style={[
+                              styles.artworkLabel,
+                              { color: feature.accent },
+                            ]}
+                          >
+                            {feature.artwork}
+                          </Text>
+                        </View>
+
+                        <View style={styles.featureCardContent}>
+                          <Text style={styles.featureTitle}>
+                            {feature.title}
+                          </Text>
+
+                          <Text style={styles.featureDescription}>
+                            {feature.description}
+                          </Text>
+                        </View>
+
+                        <View
+                          style={[
+                            styles.featureBottomLine,
+                            { backgroundColor: feature.accent },
+                          ]}
+                        />
+                      </LinearGradient>
+                    </Animated.View>
+                  );
+                })}
               </View>
             </>
           )}
@@ -737,64 +841,93 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+
+  // FINAL SCREEN: FLOATING FEATURE CARDS
   featureGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: 11,
+    rowGap: 17,
+    marginTop: 5,
   },
   featureTile: {
     width: "48%",
-    minHeight: 155,
-    padding: 13,
-    borderRadius: 17,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  featureGradient: {
+    minHeight: 220,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: "#0D1A19",
+    padding: 11,
+    justifyContent: "space-between",
+    overflow: "hidden",
   },
-  featureTileLast: {
-    width: "100%",
-    minHeight: 125,
-  },
-  featureIconBox: {
-    width: 37,
-    height: 37,
-    borderRadius: 12,
-    backgroundColor: "#173532",
+  featureArtwork: {
+    height: 125,
+    borderRadius: 14,
+    backgroundColor: "rgba(53,201,188,0.07)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    overflow: "hidden",
+    position: "relative",
   },
-  featureEmoji: {
-    fontSize: 18,
+  artworkGlow: {
+    position: "absolute",
+    width: 105,
+    height: 105,
+    borderRadius: 60,
+    opacity: 0.12,
+  },
+  artworkCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 1,
+    backgroundColor: "rgba(53,201,188,0.09)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  artworkDecoration: {
+    position: "absolute",
+    top: 12,
+    right: 13,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(53,201,188,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  artworkLabel: {
+    position: "absolute",
+    bottom: 10,
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
+  featureCardContent: {
+    paddingTop: 12,
+    paddingBottom: 5,
   },
   featureTitle: {
     color: COLORS.text,
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     marginBottom: 6,
   },
   featureDescription: {
     color: COLORS.secondary,
-    fontSize: 11,
-    lineHeight: 17,
+    fontSize: 10,
+    lineHeight: 16,
   },
-  welcomeNote: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    marginTop: 23,
-    paddingVertical: 15,
-  },
-  welcomeEmoji: {
-    color: COLORS.primary,
-    fontSize: 19,
-  },
-  welcomeText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: "600",
+  featureBottomLine: {
+    width: 32,
+    height: 2,
+    borderRadius: 3,
+    alignSelf: "center",
+    marginTop: 5,
+    opacity: 0.85,
   },
   errorText: {
     color: COLORS.error,

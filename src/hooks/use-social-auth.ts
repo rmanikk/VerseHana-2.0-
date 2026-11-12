@@ -34,29 +34,34 @@ export function useSocialAuth() {
       let token: string | undefined;
       let fullName = "";
 
-      if (provider === "google") {
-        if (Platform.OS === "web") {
-  throw new Error(
-    "Google native login is currently available in the Android and iOS apps only.",
-  );
+     if (provider === "google") {
+  if (Platform.OS === "web") {
+    throw new Error(
+      "Google native login is currently available in the Android and iOS apps only.",
+    );
+  }
+
+  // Clear the previous Google SDK session so the
+  // user can choose an account again.
+  await GoogleSignin.signOut();
+
+  await GoogleSignin.hasPlayServices({
+    showPlayServicesUpdateDialog: true,
+  });
+
+  const googleResult = await GoogleSignin.signIn();
+
+  if (googleResult.type === "cancelled") {
+    return;
+  }
+
+  token = googleResult.data.idToken ?? undefined;
+  fullName = googleResult.data.user.name ?? "";
+
+  if (!token) {
+    throw new Error("Google did not return an ID token.");
+  }
 }
-        await GoogleSignin.hasPlayServices({
-          showPlayServicesUpdateDialog: true,
-        });
-
-        const googleResult = await GoogleSignin.signIn();
-
-        if (googleResult.type === "cancelled") {
-          return;
-        }
-
-        token = googleResult.data.idToken ?? undefined;
-        fullName = googleResult.data.user.name ?? "";
-
-        if (!token) {
-          throw new Error("Google did not return an ID token.");
-        }
-      }
 
       if (provider === "facebook") {
         if (Platform.OS === "web") {

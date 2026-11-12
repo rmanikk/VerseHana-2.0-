@@ -32,7 +32,7 @@ export const registerUser = async ({
     }
 
     if (user.username === normalizedUsername) {
-      const error = new Error("This username is already taken.");
+      const error = new Error("Username already exists.");
       error.statusCode = 409;
       throw error;
     }

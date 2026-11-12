@@ -23,13 +23,20 @@ function sendError(res, error) {
   console.error("OAuth error:", {
     message: error.message,
     code: error.code,
+    constraint: error.constraint,
   });
 
   // Handle database uniqueness conflicts.
   if (error.code === "23505") {
+    const duplicateUsername =
+      error.constraint?.toLowerCase().includes("username") ||
+      error.detail?.toLowerCase().includes("username");
+
     return res.status(409).json({
       success: false,
-      message: "An account with these details already exists.",
+      message: duplicateUsername
+        ? "Username already exists."
+        : "An account with these details already exists.",
     });
   }
 
@@ -77,13 +84,13 @@ async function handleSocialLogin(identity, res) {
   // Check whether this provider account already exists.
   const existingResult = await query(
     `SELECT
-  id,
-  full_name,
-  username,
-  email,
-  email_verified,
-  auth_provider,
-  is_active
+      id,
+      full_name,
+      username,
+      email,
+      email_verified,
+      auth_provider,
+      is_active
      FROM users
      WHERE ${providerColumn} = $1
      LIMIT 1`,
@@ -261,29 +268,52 @@ export async function completeOAuthSignup(req, res) {
     const providerColumn =
       onboarding.provider === "google" ? "google_id" : "facebook_id";
 
-    // Prevent duplicate usernames, emails and provider identities.
-    const duplicateResult = await query(
+    // ------------------------------------------
+    // CHECK DUPLICATE USERNAME
+    // ------------------------------------------
+
+    const usernameResult = await query(
       `SELECT id
        FROM users
        WHERE username = $1
-          OR ($2::text IS NOT NULL AND email = $2)
-          OR ${providerColumn} = $3
+       LIMIT 1`,
+      [username]
+    );
+
+    if (usernameResult.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Username already exists.",
+      });
+    }
+
+    // ------------------------------------------
+    // CHECK DUPLICATE EMAIL OR PROVIDER IDENTITY
+    // ------------------------------------------
+
+    const existingAccountResult = await query(
+      `SELECT id
+       FROM users
+       WHERE ($1::text IS NOT NULL AND email = $1)
+          OR ${providerColumn} = $2
        LIMIT 1`,
       [
-        username,
         onboarding.email || null,
         onboarding.providerId,
       ]
     );
 
-    if (duplicateResult.rows.length > 0) {
+    if (existingAccountResult.rows.length > 0) {
       return res.status(409).json({
         success: false,
-        message: "That email or username is already registered.",
+        message: "An account with these details already exists.",
       });
     }
 
-    // Create the new social account.
+    // ------------------------------------------
+    // CREATE NEW SOCIAL ACCOUNT
+    // ------------------------------------------
+
     const insertResult = await query(
       `INSERT INTO users (
         full_name,

@@ -68,9 +68,9 @@ export const usernameSchema = z
     "Avoid consecutive underscores."
   )
   .refine(
-    (value) => !hasBlockedUsernameTerm(value),
-    "Please choose a different username."
-  );
+  (value) => !hasBlockedUsernameTerm(value),
+  "Please use an appropriate username."
+);
 
 export const signupSchema = z.object({
   fullName: z

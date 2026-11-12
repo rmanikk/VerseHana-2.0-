@@ -27,11 +27,15 @@ import { authStorage } from "@/services/auth-storage";
 const colors = Colors.dark;
 const RESEND_COOLDOWN = 60;
 
+type OtpStatus = "idle" | "checking" | "valid" | "invalid";
+
 export default function VerifyOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
 
   const inputRef = useRef<ElementRef<typeof TextInput>>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const verificationAttemptRef = useRef(false);
+  const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,10 +44,11 @@ export default function VerifyOtpScreen() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [otpStatus, setOtpStatus] = useState<OtpStatus>("idle");
 
   const normalizedEmail = (email || "").trim().toLowerCase();
 
-  // Listen to the animated verification progress.
+  // Listen to animated verification progress.
   useEffect(() => {
     const listener = progressAnim.addListener(({ value }) => {
       setProgress(Math.round(value));
@@ -51,6 +56,10 @@ export default function VerifyOtpScreen() {
 
     return () => {
       progressAnim.removeListener(listener);
+
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
     };
   }, [progressAnim]);
 
@@ -105,22 +114,31 @@ export default function VerifyOtpScreen() {
     setProgress(0);
   };
 
-  const handleVerify = async () => {
-    if (loading || resending) return;
+  // Automatically verify the completed six-digit code.
+  const handleVerify = async (code: string = otp) => {
+    if (
+      verificationAttemptRef.current ||
+      loading ||
+      resending
+    ) {
+      return;
+    }
 
     setError("");
     setMessage("");
 
     if (!normalizedEmail) {
+      setOtpStatus("invalid");
       setError("Your email address is missing. Please return to signup.");
       return;
     }
 
-    if (!/^\d{6}$/.test(otp)) {
-      setError("Please enter your six-digit verification code.");
-      inputRef.current?.focus();
+    if (!/^\d{6}$/.test(code)) {
       return;
     }
+
+    verificationAttemptRef.current = true;
+    setOtpStatus("checking");
 
     Keyboard.dismiss();
     setLoading(true);
@@ -136,7 +154,7 @@ export default function VerifyOtpScreen() {
         },
         body: JSON.stringify({
           email: normalizedEmail,
-          otp,
+          otp: code,
         }),
       });
 
@@ -148,8 +166,9 @@ export default function VerifyOtpScreen() {
         !data.accessToken ||
         !data.refreshToken
       ) {
+        setOtpStatus("invalid");
         setError(
-          data.message || "Verification failed. Please try again.",
+          data.message || "Invalid verification code. Please try again.",
         );
         return;
       }
@@ -160,21 +179,23 @@ export default function VerifyOtpScreen() {
       );
 
       verified = true;
+      setOtpStatus("valid");
 
       await completeProgress();
 
       setMessage("Your email has been verified successfully!");
 
-      setTimeout(() => {
-  router.replace("/onboarding");
-}, 450);
+      navigationTimeoutRef.current = setTimeout(() => {
+        router.replace("/onboarding");
+      }, 450);
     } catch (err) {
       console.error("OTP verification error:", err);
 
-      setError(
-        "Unable to connect to VerseHana. Please try again.",
-      );
+      setOtpStatus("idle");
+      setError("Unable to connect to VerseHana. Please try again.");
     } finally {
+      verificationAttemptRef.current = false;
+
       if (!verified) {
         resetProgress();
       }
@@ -222,16 +243,17 @@ export default function VerifyOtpScreen() {
 
       setCountdown(RESEND_COOLDOWN);
       setOtp("");
+      setOtpStatus("idle");
 
-      setMessage(data.message || "A new verification code has been sent.");
+      setMessage(
+        data.message || "A new verification code has been sent.",
+      );
 
       inputRef.current?.focus();
     } catch (err) {
       console.error("OTP resend error:", err);
 
-      setError(
-        "Unable to connect to VerseHana. Please try again.",
-      );
+      setError("Unable to connect to VerseHana. Please try again.");
     } finally {
       setResending(false);
     }
@@ -256,13 +278,22 @@ export default function VerifyOtpScreen() {
                   styles.otpBox,
                   isActive && styles.otpBoxActive,
                   digit && styles.otpBoxFilled,
+                  otpStatus === "valid" && styles.otpBoxValid,
+                  otpStatus === "invalid" && styles.otpBoxInvalid,
+                  otpStatus === "checking" && styles.otpBoxChecking,
                 ]}
               >
-                <Text style={styles.otpDigit}>
+                <Text
+                  style={[
+                    styles.otpDigit,
+                    otpStatus === "valid" && styles.otpDigitValid,
+                    otpStatus === "invalid" && styles.otpDigitInvalid,
+                  ]}
+                >
                   {digit || ""}
                 </Text>
 
-                {isActive && !digit && (
+                {isActive && !digit && otpStatus === "idle" && (
                   <View style={styles.cursor} />
                 )}
               </View>
@@ -274,9 +305,16 @@ export default function VerifyOtpScreen() {
           ref={inputRef}
           value={otp}
           onChangeText={(value) => {
-            setOtp(value.replace(/\D/g, "").slice(0, 6));
+            const nextOtp = value.replace(/\D/g, "").slice(0, 6);
+
+            setOtp(nextOtp);
             setError("");
             setMessage("");
+            setOtpStatus("idle");
+
+            if (nextOtp.length === 6) {
+              void handleVerify(nextOtp);
+            }
           }}
           keyboardType="number-pad"
           maxLength={6}
@@ -288,7 +326,7 @@ export default function VerifyOtpScreen() {
           accessibilityLabel="Six-digit verification code"
           style={styles.hiddenInput}
           textContentType="oneTimeCode"
-          onSubmitEditing={handleVerify}
+          onSubmitEditing={() => handleVerify()}
           returnKeyType="done"
         />
       </Pressable>
@@ -306,19 +344,25 @@ export default function VerifyOtpScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-         {/* Back navigation */}
-<Pressable
-  onPress={() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/signup");
-    }
-  }}
-  style={styles.backButton}
-  accessibilityRole="button"
-  accessibilityLabel="Go back"
-></Pressable>
+          {/* Back navigation */}
+          <Pressable
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/signup");
+              }
+            }}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons
+              name="arrow-back"
+              size={21}
+              color="#D8EBE8"
+            />
+          </Pressable>
 
           {/* Header illustration */}
           <View style={styles.hero}>
@@ -399,7 +443,7 @@ export default function VerifyOtpScreen() {
                 <Ionicons
                   name="checkmark-circle-outline"
                   size={18}
-                  color="#49D9D4"
+                  color="#39D98A"
                 />
                 <Text style={styles.successText}>{message}</Text>
               </View>
@@ -444,46 +488,19 @@ export default function VerifyOtpScreen() {
               </View>
             )}
 
-            {/* Verify button */}
-            <Pressable
-              onPress={handleVerify}
-              disabled={loading || resending}
-              style={({ pressed }) => [
-                styles.verifyButton,
-                pressed && styles.buttonPressed,
-                (loading || resending) && styles.buttonDisabled,
-              ]}
-            >
-              <LinearGradient
-                colors={["#49D9D4", "#17BDBA"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.verifyGradient}
-              >
-                {loading ? (
-                  <>
-                    <Text style={styles.verifyText}>
-                      Verifying...
-                    </Text>
-                    <ActivityIndicator
-                      color="#031718"
-                      size="small"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.verifyText}>
-                      Verify email
-                    </Text>
-                    <Ionicons
-                      name="arrow-forward"
-                      size={19}
-                      color="#031718"
-                    />
-                  </>
-                )}
-              </LinearGradient>
-            </Pressable>
+            {/* Status hint */}
+            {otpStatus === "valid" && (
+              <View style={styles.statusRow}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={17}
+                  color="#39D98A"
+                />
+                <Text style={styles.validStatusText}>
+                  Code verified successfully
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Resend timer */}
@@ -494,9 +511,7 @@ export default function VerifyOtpScreen() {
 
             <Pressable
               onPress={handleResend}
-              disabled={
-                loading || resending || countdown > 0
-              }
+              disabled={loading || resending || countdown > 0}
               style={styles.resendButton}
             >
               {resending ? (
@@ -696,10 +711,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#102321",
   },
 
+  otpBoxChecking: {
+    borderColor: "#49D9D4",
+    backgroundColor: "#102522",
+  },
+
+  otpBoxValid: {
+    borderColor: "#39D98A",
+    backgroundColor: "#10291F",
+  },
+
+  otpBoxInvalid: {
+    borderColor: "#FF6B6B",
+    backgroundColor: "#2A1517",
+  },
+
   otpDigit: {
     color: "#F4FFFD",
     fontSize: 23,
     fontWeight: "800",
+  },
+
+  otpDigitValid: {
+    color: "#39D98A",
+  },
+
+  otpDigitInvalid: {
+    color: "#FF8585",
   },
 
   cursor: {
@@ -737,10 +775,22 @@ const styles = StyleSheet.create({
   },
 
   successText: {
-    color: "#49D9D4",
+    color: "#39D98A",
     fontSize: 12,
     lineHeight: 18,
     flex: 1,
+  },
+
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  validStatusText: {
+    color: "#39D98A",
+    fontSize: 12,
+    fontWeight: "700",
   },
 
   progressCard: {
@@ -793,35 +843,6 @@ const styles = StyleSheet.create({
   progressSubtitle: {
     color: "#78918E",
     fontSize: 11,
-  },
-
-  verifyButton: {
-    borderRadius: 40,
-    overflow: "hidden",
-    marginTop: 5,
-  },
-
-  verifyGradient: {
-    height: 57,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-
-  verifyText: {
-    color: "#031718",
-    fontSize: 15,
-    fontWeight: "800",
-  },
-
-  buttonPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.99 }],
-  },
-
-  buttonDisabled: {
-    opacity: 0.7,
   },
 
   resendSection: {
