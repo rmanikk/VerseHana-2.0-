@@ -1,3 +1,4 @@
+
 {
   "name": "versehana-backend",
   "version": "1.0.0",
@@ -6,7 +7,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "migrate": "node src/database/run-migrations.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

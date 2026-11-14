@@ -1,3 +1,4 @@
+
 import { NativeTabs } from "expo-router/native-tabs";
 
 import { Colors } from "@/constants/theme";
@@ -22,6 +23,11 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
+      <NativeTabs.Trigger name="verseflow">
+        <NativeTabs.Trigger.Label>VerseFlow</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="waveform" />
+      </NativeTabs.Trigger>
+
       <NativeTabs.Trigger name="search">
         <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
@@ -32,17 +38,12 @@ export default function AppTabs() {
 
       <NativeTabs.Trigger name="pulse">
         <NativeTabs.Trigger.Label>Pulse</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="waveform" />
+        <NativeTabs.Trigger.Icon sf="waveform.path" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="library">
         <NativeTabs.Trigger.Label>Library</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf="books.vertical" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="profile">
-        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="person.crop.circle" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

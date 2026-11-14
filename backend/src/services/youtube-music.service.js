@@ -24,7 +24,7 @@ const GENERIC_ARTIST_NAME_PATTERNS = [
   /\bsensual\b/i,
 ];
 
-async function getMusicClient() {
+export async function getMusicClient() {
   if (musicClient) return musicClient;
 
   if (!clientPromise) {

@@ -8,10 +8,10 @@ const colors = Colors.dark;
 
 const tabs = [
   { label: "Home", href: "/" as const },
+  { label: "VerseFlow", href: "/verseflow" as const },
   { label: "Search", href: "/search" as const },
   { label: "Pulse", href: "/pulse" as const },
   { label: "Library", href: "/library" as const },
-  { label: "Profile", href: "/profile" as const },
 ];
 
 export default function AppTabsWeb() {
