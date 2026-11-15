@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -6,6 +7,7 @@ import dotenv from "dotenv";
 import healthRoutes from "./routes/health.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import oauthRoutes from "./routes/oauth.routes.js";
+import verseflowRoutes from "./routes/verseflow.routes.js";
 
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
@@ -51,6 +53,7 @@ app.get("/", (req, res) => {
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/oauth", oauthRoutes);
+app.use("/api/verseflow", verseflowRoutes);
 
 // Error handling
 app.use(notFound);

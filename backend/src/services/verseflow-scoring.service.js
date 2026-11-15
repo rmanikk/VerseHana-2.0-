@@ -15,38 +15,32 @@ export function calculateRelevanceScore(
 ) {
   let score = 0;
 
-  // Prevent division by zero.
   maxResults = Math.max(1, maxResults);
 
-  // 1. Search position: maximum 20 points.
+  // 1. Search position: maximum 10 points.
   const position = clamp(searchPosition, 1, maxResults);
 
   score += Math.round(
-    ((maxResults - position + 1) / maxResults) * 20
+    ((maxResults - position + 1) / maxResults) * 10
   );
 
-  // 2. Duration suitability: maximum 20 points.
+  // 2. Suitable duration: maximum 10 points.
   const duration = candidate.durationSeconds;
 
-  if (duration === null || duration === undefined) {
-    score += 8;
-  } else if (duration >= 120 && duration <= 360) {
-    score += 20;
-  } else if (duration >= 60 && duration <= 600) {
-    score += 16;
-  } else if (duration >= 30 && duration <= 900) {
+  if (duration >= 120 && duration <= 360) {
     score += 10;
+  } else if (duration >= 60 && duration <= 600) {
+    score += 7;
+  } else if (duration >= 30 && duration <= 900) {
+    score += 4;
   }
 
-  // 3. Metadata completeness: maximum 25 points.
-  if (candidate.title?.trim()) score += 8;
-  if (candidate.artist?.trim()) score += 8;
-  if (candidate.album) score += 3;
-  if (candidate.thumbnailUrl) score += 3;
-
-  if (duration !== null && duration !== undefined) {
-    score += 3;
-  }
+  // 3. Metadata completeness: maximum 15 points.
+  if (candidate.title?.trim()) score += 5;
+  if (candidate.artist?.trim()) score += 5;
+  if (candidate.album) score += 2;
+  if (candidate.thumbnailUrl) score += 2;
+  if (duration !== null && duration !== undefined) score += 1;
 
   // 4. Title quality: maximum 10 points.
   const titleLength = candidate.title?.trim().length || 0;
@@ -54,26 +48,27 @@ export function calculateRelevanceScore(
   if (titleLength >= 8 && titleLength <= 80) {
     score += 10;
   } else if (titleLength >= 4) {
-    score += 6;
+    score += 5;
   }
 
-  // 5. Artist metadata quality: maximum 10 points.
+  // 5. Artist metadata: maximum 5 points.
   const artistCount = candidate.artist
     ? candidate.artist.split(",").filter(Boolean).length
     : 0;
 
   if (artistCount === 1 || artistCount === 2) {
-    score += 10;
+    score += 5;
   } else if (artistCount > 2) {
+    score += 2;
+  }
+
+  // 6. Search context: maximum 10 points.
+  if (task.mood && task.genre) {
+    score += 10;
+  } else if (task.mood || task.genre) {
     score += 5;
   }
 
-  // 6. Discovery context: maximum 15 points.
-  if (task.mood && task.genre) {
-    score += 15;
-  } else if (task.mood || task.genre) {
-    score += 8;
-  }
-
-  return Number(clamp(score, 0, MAX_SCORE).toFixed(2));
+  // Metadata alone must not make a candidate appear excellent.
+  return Number(clamp(score, 0, 60).toFixed(2));
 }

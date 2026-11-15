@@ -11,6 +11,9 @@ const VALID_CATEGORIES = ["global", "nepali", "hindi"];
 const MAX_QUERIES_PER_RUN = 12;
 const MAX_RESULTS_PER_QUERY = 8;
 
+const MAX_TRACK_DURATION_SECONDS = 15 * 60;
+const MIN_TRACK_DURATION_SECONDS = 30;
+
 function getText(value) {
   if (typeof value === "string") return value;
   if (typeof value?.text === "string") return value.text;
@@ -27,7 +30,6 @@ function getTrackArtists(track) {
 
 function getTrackThumbnail(track) {
   const thumbnails = track.thumbnails || [];
-
   const thumbnail = thumbnails.find((item) => item?.url);
 
   return thumbnail?.url || null;
@@ -47,10 +49,6 @@ function getTrackDuration(track) {
   return null;
 }
 
-
-const MAX_TRACK_DURATION_SECONDS = 15 * 60;
-const MIN_TRACK_DURATION_SECONDS = 30;
-
 const LOW_QUALITY_TITLE_PATTERNS = [
   /\bfull album\b/i,
   /\bcomplete album\b/i,
@@ -60,6 +58,7 @@ const LOW_QUALITY_TITLE_PATTERNS = [
   /\bnon.?stop mix\b/i,
   /\bcontinuous mix\b/i,
   /\bmega mix\b/i,
+  /\bjukebox\b/i,
   /\b1\s*hour\b/i,
   /\b2\s*hours?\b/i,
   /\b3\s*hours?\b/i,
@@ -71,6 +70,13 @@ const LOW_QUALITY_TITLE_PATTERNS = [
   /\blofi radio\b/i,
   /\bambient sounds\b/i,
   /\bsoundscape\b/i,
+  /\bmusic collection\b/i,
+  /\bbest songs of\b/i,
+  /\btop songs of\b/i,
+  /\bsong reaction\b/i,
+  /\bmusic reaction\b/i,
+  /\bmusic review\b/i,
+  /\bkaraoke version\b/i,
 ];
 
 const GENERIC_ARTIST_PATTERNS = [
@@ -81,11 +87,14 @@ const GENERIC_ARTIST_PATTERNS = [
   /\bmixes\b/i,
   /\binstrumental music\b/i,
   /\bmusic for\b/i,
+  /\bsleep music\b/i,
+  /\bmeditation music\b/i,
+  /\bsound effects\b/i,
 ];
 
 function checkTrackQuality(candidate) {
-  const title = candidate.title.trim();
-  const artist = candidate.artist.trim();
+  const title = candidate.title?.trim() || "";
+  const artist = candidate.artist?.trim() || "";
   const duration = candidate.durationSeconds;
 
   if (!title || !artist) {
@@ -102,7 +111,7 @@ function checkTrackQuality(candidate) {
   ) {
     return {
       accepted: false,
-      reason: "compilation_or_background_mix",
+      reason: "compilation_or_non_song_content",
     };
   }
 
@@ -136,7 +145,6 @@ function checkTrackQuality(candidate) {
   };
 }
 
-
 // Generate category-specific mood and genre searches.
 function buildSearchQuery(category, mood, genre) {
   if (category === "nepali") {
@@ -150,7 +158,7 @@ function buildSearchQuery(category, mood, genre) {
   return `${mood} ${genre} music`;
 }
 
-// Distribute searches across all moods before repeating moods.
+// Distribute searches across moods before repeating moods.
 function buildSearchTasks(category) {
   const moodEntries = Object.entries(MOOD_GENRES);
   const tasks = [];
@@ -203,12 +211,8 @@ function normalizeTrack(track, task, category) {
     thumbnailUrl: getTrackThumbnail(track),
     durationSeconds: getTrackDuration(track),
 
-    languageCode:
-      category === "nepali"
-        ? "ne"
-        : category === "hindi"
-          ? "hi"
-          : null,
+    // Search category is not proof of the actual song language.
+    languageCode: null,
 
     category,
     moods: [task.mood],
@@ -222,10 +226,11 @@ function normalizeTrack(track, task, category) {
       searchQuery: task.searchQuery,
       source: SOURCE_NAME,
       trackId: id,
+      categorySearch: category,
+      languageVerification: "unverified",
     },
   };
 }
-
 
 async function saveCandidate(candidate, runId) {
   const result = await query(
@@ -258,10 +263,10 @@ async function saveCandidate(candidate, runId) {
       )
       ON CONFLICT (source_name, source_item_id)
       DO UPDATE SET
-      relevance_score = GREATEST(
-  verseflow_candidates.relevance_score,
-  EXCLUDED.relevance_score
-),
+        relevance_score = GREATEST(
+          verseflow_candidates.relevance_score,
+          EXCLUDED.relevance_score
+        ),
         moods = (
           SELECT COALESCE(
             jsonb_agg(DISTINCT value),
@@ -339,13 +344,13 @@ export async function discoverVerseFlowCandidates({
 
   const runId = runResult.rows[0].id;
 
-let searchedQueries = 0;
-let discoveredTracks = 0;
-let savedCandidates = 0;
-let duplicateCandidates = 0;
-let filteredCandidates = 0;
+  let searchedQueries = 0;
+  let discoveredTracks = 0;
+  let savedCandidates = 0;
+  let duplicateCandidates = 0;
+  let filteredCandidates = 0;
 
-const filterReasons = {};
+  const filterReasons = {};
 
   try {
     const music = await getMusicClient();
@@ -361,44 +366,51 @@ const filterReasons = {};
       const tracks = results.songs?.contents || [];
 
       const selectedTracks = tracks.slice(
-  0,
-  MAX_RESULTS_PER_QUERY
-);
+        0,
+        MAX_RESULTS_PER_QUERY
+      );
 
-for (let index = 0; index < selectedTracks.length; index++) {
-  const track = selectedTracks[index];
+      for (let index = 0; index < selectedTracks.length; index++) {
+        const track = selectedTracks[index];
 
         const candidate = normalizeTrack(
-  track,
-  task,
-  category
-);
+          track,
+          task,
+          category
+        );
 
-if (!candidate) continue;
+        if (!candidate) {
+          filteredCandidates++;
 
-candidate.relevanceScore = calculateRelevanceScore(
-  candidate,
-  {
-    searchPosition: index + 1,
-    maxResults: selectedTracks.length,
-    task,
-  }
-);
+          filterReasons.missing_metadata =
+            (filterReasons.missing_metadata || 0) + 1;
 
-discoveredTracks++;
+          continue;
+        }
 
-const quality = checkTrackQuality(candidate);
+        discoveredTracks++;
 
-if (!quality.accepted) {
-  filteredCandidates++;
+        candidate.relevanceScore = calculateRelevanceScore(
+          candidate,
+          {
+            searchPosition: index + 1,
+            maxResults: selectedTracks.length,
+            task,
+          }
+        );
 
-  filterReasons[quality.reason] =
-    (filterReasons[quality.reason] || 0) + 1;
+        const quality = checkTrackQuality(candidate);
 
-  continue;
-}
+        if (!quality.accepted) {
+          filteredCandidates++;
 
-const saved = await saveCandidate(candidate, runId);
+          filterReasons[quality.reason] =
+            (filterReasons[quality.reason] || 0) + 1;
+
+          continue;
+        }
+
+        const saved = await saveCandidate(candidate, runId);
 
         if (saved) {
           savedCandidates++;
@@ -409,14 +421,15 @@ const saved = await saveCandidate(candidate, runId);
     }
 
     const summary = {
-  category,
-  searchedQueries,
-  discoveredTracks,
-  savedCandidates,
-  duplicateCandidates,
-  filteredCandidates,
-  filterReasons,
-};
+      category,
+      searchedQueries,
+      discoveredTracks,
+      savedCandidates,
+      duplicateCandidates,
+      filteredCandidates,
+      filterReasons,
+      languageVerification: "unverified",
+    };
 
     await query(
       `

@@ -3,7 +3,7 @@ import pool from "../config/database.js";
 
 const CATEGORIES = ["global", "nepali", "hindi"];
 
-const DEFAULT_LIMIT_PER_CATEGORY = 30;
+const DEFAULT_LIMIT_PER_CATEGORY = 20;
 
 export async function selectVerseFlowCandidates({
   limitPerCategory = DEFAULT_LIMIT_PER_CATEGORY,
