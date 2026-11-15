@@ -1,6 +1,6 @@
 
-import { getMusicClient } from "./youtube-music.service.js";
-import { MOOD_GENRES } from "../constants/mood-genres.js";
+import { getChannelVideos } from "./youtube-music.service.js";
+import { getArtistChannels } from "./verseflow-artist-channel.service.js";
 import { query } from "../config/database.js";
 import { calculateRelevanceScore } from "./verseflow-scoring.service.js";
 
@@ -8,46 +8,10 @@ const SOURCE_NAME = "youtube_music";
 
 const VALID_CATEGORIES = ["global", "nepali", "hindi"];
 
-const MAX_QUERIES_PER_RUN = 12;
-const MAX_RESULTS_PER_QUERY = 8;
+const MAX_VIDEOS_PER_CHANNEL = 30;
 
 const MAX_TRACK_DURATION_SECONDS = 15 * 60;
 const MIN_TRACK_DURATION_SECONDS = 30;
-
-function getText(value) {
-  if (typeof value === "string") return value;
-  if (typeof value?.text === "string") return value.text;
-  return "";
-}
-
-function getTrackArtists(track) {
-  if (!Array.isArray(track.artists)) return [];
-
-  return track.artists
-    .map((artist) => getText(artist.name || artist))
-    .filter(Boolean);
-}
-
-function getTrackThumbnail(track) {
-  const thumbnails = track.thumbnails || [];
-  const thumbnail = thumbnails.find((item) => item?.url);
-
-  return thumbnail?.url || null;
-}
-
-function getTrackDuration(track) {
-  const duration = track.duration;
-
-  if (typeof duration?.seconds === "number") {
-    return Math.floor(duration.seconds);
-  }
-
-  if (typeof track.duration_seconds === "number") {
-    return Math.floor(track.duration_seconds);
-  }
-
-  return null;
-}
 
 const LOW_QUALITY_TITLE_PATTERNS = [
   /\bfull album\b/i,
@@ -145,89 +109,53 @@ function checkTrackQuality(candidate) {
   };
 }
 
-// Generate category-specific mood and genre searches.
-function buildSearchQuery(category, mood, genre) {
-  if (category === "nepali") {
-    return `Nepali ${mood} ${genre} songs`;
-  }
-
-  if (category === "hindi") {
-    return `Hindi ${mood} ${genre} songs`;
-  }
-
-  return `${mood} ${genre} music`;
-}
-
-// Distribute searches across moods before repeating moods.
-function buildSearchTasks(category) {
-  const moodEntries = Object.entries(MOOD_GENRES);
-  const tasks = [];
-
-  const maxGenres = Math.max(
-    ...moodEntries.map(([, genres]) => genres.length)
-  );
-
-  for (let genreIndex = 0; genreIndex < maxGenres; genreIndex++) {
-    for (const [mood, genres] of moodEntries) {
-      const genre = genres[genreIndex];
-
-      if (!genre) continue;
-
-      tasks.push({
-        mood,
-        genre,
-        searchQuery: buildSearchQuery(
-          category,
-          mood,
-          genre
-        ),
-      });
-
-      if (tasks.length >= MAX_QUERIES_PER_RUN) {
-        return tasks;
-      }
-    }
-  }
-
-  return tasks;
-}
-
-function normalizeTrack(track, task, category) {
-  const id = track.id;
-  const title = getText(track.title);
-  const artists = getTrackArtists(track);
-
-  if (!id || !title || artists.length === 0) {
+function normalizeVideo(video, artistChannel) {
+  if (!video?.id || !video?.title) {
     return null;
   }
 
   return {
     sourceName: SOURCE_NAME,
-    sourceItemId: id,
-    sourceUrl: `https://music.youtube.com/watch?v=${id}`,
-    title,
-    artist: artists.join(", "),
-    album: getText(track.album?.name || track.album) || null,
-    thumbnailUrl: getTrackThumbnail(track),
-    durationSeconds: getTrackDuration(track),
+    sourceItemId: video.id,
+    sourceUrl: video.url ||
+      `https://www.youtube.com/watch?v=${video.id}`,
 
-    // Search category is not proof of the actual song language.
-    languageCode: null,
+    title: video.title.trim(),
 
-    category,
-    moods: [task.mood],
-    genres: [task.genre],
+    // Use the artist name registered by the administrator.
+    artist: artistChannel.artist_name,
+
+    album: null,
+    thumbnailUrl: video.thumbnail || null,
+    durationSeconds: video.durationSeconds ?? null,
+
+    // Preserve the channel's configured language.
+    languageCode: artistChannel.language_code || null,
+
+    // Category comes from the registered artist channel.
+    category: artistChannel.category,
+
+    // We will classify mood and genre in a later stage.
+    moods: [],
+    genres: [],
+
     popularityScore: 0,
     trendScore: 0,
+
     rightsStatus: "unknown",
     discoveryStatus: "discovered",
 
+    sourceArtistChannelId: artistChannel.id,
+
     rawMetadata: {
-      searchQuery: task.searchQuery,
-      source: SOURCE_NAME,
-      trackId: id,
-      categorySearch: category,
-      languageVerification: "unverified",
+      source: "youtube_artist_channel",
+      channelId: artistChannel.channel_id,
+      channelName: artistChannel.artist_name,
+      channelUrl: artistChannel.channel_url,
+      videoId: video.id,
+      videoTitle: video.title,
+      category: artistChannel.category,
+      languageCode: artistChannel.language_code || null,
     },
   };
 }
@@ -254,12 +182,14 @@ async function saveCandidate(candidate, runId) {
         rights_status,
         discovery_status,
         raw_metadata,
-        discovered_by_run
+        discovered_by_run,
+        source_artist_channel_id
       )
       VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
         $9, $10, $11::jsonb, $12::jsonb,
-        $13, $14, $15, $16, $17, $18::jsonb, $19
+        $13, $14, $15, $16, $17, $18::jsonb,
+        $19, $20
       )
       ON CONFLICT (source_name, source_item_id)
       DO UPDATE SET
@@ -267,6 +197,14 @@ async function saveCandidate(candidate, runId) {
           verseflow_candidates.relevance_score,
           EXCLUDED.relevance_score
         ),
+
+        category = EXCLUDED.category,
+
+        source_artist_channel_id = COALESCE(
+          verseflow_candidates.source_artist_channel_id,
+          EXCLUDED.source_artist_channel_id
+        ),
+
         moods = (
           SELECT COALESCE(
             jsonb_agg(DISTINCT value),
@@ -276,6 +214,7 @@ async function saveCandidate(candidate, runId) {
             verseflow_candidates.moods || EXCLUDED.moods
           ) AS mood(value)
         ),
+
         genres = (
           SELECT COALESCE(
             jsonb_agg(DISTINCT value),
@@ -285,7 +224,13 @@ async function saveCandidate(candidate, runId) {
             verseflow_candidates.genres || EXCLUDED.genres
           ) AS genre(value)
         ),
+
+        raw_metadata =
+          verseflow_candidates.raw_metadata ||
+          EXCLUDED.raw_metadata,
+
         updated_at = CURRENT_TIMESTAMP
+
       RETURNING (xmax = 0) AS inserted
     `,
     [
@@ -308,6 +253,7 @@ async function saveCandidate(candidate, runId) {
       candidate.discoveryStatus,
       JSON.stringify(candidate.rawMetadata),
       runId,
+      candidate.sourceArtistChannelId,
     ]
   );
 
@@ -344,6 +290,7 @@ export async function discoverVerseFlowCandidates({
 
   const runId = runResult.rows[0].id;
 
+  let scannedChannels = 0;
   let searchedQueries = 0;
   let discoveredTracks = 0;
   let savedCandidates = 0;
@@ -351,84 +298,96 @@ export async function discoverVerseFlowCandidates({
   let filteredCandidates = 0;
 
   const filterReasons = {};
+  const channelErrors = [];
 
   try {
-    const music = await getMusicClient();
-    const tasks = buildSearchTasks(category);
+    const artistChannels = await getArtistChannels({
+      category,
+      verificationStatus: "verified",
+      activeOnly: true,
+    });
 
-    for (const task of tasks) {
-      searchedQueries++;
+    for (const artistChannel of artistChannels) {
+      scannedChannels++;
 
-      const results = await music.search(task.searchQuery, {
-        type: "song",
-      });
-
-      const tracks = results.songs?.contents || [];
-
-      const selectedTracks = tracks.slice(
-        0,
-        MAX_RESULTS_PER_QUERY
-      );
-
-      for (let index = 0; index < selectedTracks.length; index++) {
-        const track = selectedTracks[index];
-
-        const candidate = normalizeTrack(
-          track,
-          task,
-          category
+      try {
+        const videos = await getChannelVideos(
+          artistChannel.channel_id,
+          MAX_VIDEOS_PER_CHANNEL
         );
 
-        if (!candidate) {
-          filteredCandidates++;
+        // Keep the existing result field for compatibility.
+        searchedQueries++;
 
-          filterReasons.missing_metadata =
-            (filterReasons.missing_metadata || 0) + 1;
+        for (
+          let index = 0;
+          index < videos.length;
+          index++
+        ) {
+          const video = videos[index];
 
-          continue;
-        }
+          const candidate = normalizeVideo(
+            video,
+            artistChannel
+          );
 
-        discoveredTracks++;
+          if (!candidate) {
+            filteredCandidates++;
 
-        candidate.relevanceScore = calculateRelevanceScore(
-          candidate,
-          {
-            searchPosition: index + 1,
-            maxResults: selectedTracks.length,
-            task,
+            filterReasons.missing_metadata =
+              (filterReasons.missing_metadata || 0) + 1;
+
+            continue;
           }
-        );
 
-        const quality = checkTrackQuality(candidate);
+          discoveredTracks++;
 
-        if (!quality.accepted) {
-          filteredCandidates++;
+          candidate.relevanceScore =
+            calculateRelevanceScore(candidate, {
+              searchPosition: index + 1,
+              maxResults: Math.max(1, videos.length),
+              task: {},
+            });
 
-          filterReasons[quality.reason] =
-            (filterReasons[quality.reason] || 0) + 1;
+          const quality = checkTrackQuality(candidate);
 
-          continue;
+          if (!quality.accepted) {
+            filteredCandidates++;
+
+            filterReasons[quality.reason] =
+              (filterReasons[quality.reason] || 0) + 1;
+
+            continue;
+          }
+
+          const saved = await saveCandidate(candidate, runId);
+
+          if (saved) {
+            savedCandidates++;
+          } else {
+            duplicateCandidates++;
+          }
         }
-
-        const saved = await saveCandidate(candidate, runId);
-
-        if (saved) {
-          savedCandidates++;
-        } else {
-          duplicateCandidates++;
-        }
+      } catch (error) {
+        channelErrors.push({
+          artist: artistChannel.artist_name,
+          channelId: artistChannel.channel_id,
+          message: error.message,
+        });
       }
     }
 
     const summary = {
       category,
+      scannedChannels,
       searchedQueries,
       discoveredTracks,
       savedCandidates,
       duplicateCandidates,
       filteredCandidates,
       filterReasons,
-      languageVerification: "unverified",
+      channelErrors,
+      discoverySource: "verified_artist_channels",
     };
 
     await query(

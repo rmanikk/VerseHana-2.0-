@@ -3,6 +3,7 @@ import { query } from "../config/database.js";
 
 const VALID_CATEGORIES = ["global", "nepali", "hindi"];
 
+
 function validateArtistInput({
   artistName,
   channelId,
@@ -17,6 +18,10 @@ function validateArtistInput({
     throw new Error("YouTube channel ID is required.");
   }
 
+  if (!/^UC[\w-]{22}$/.test(channelId.trim())) {
+    throw new Error("Invalid YouTube channel ID.");
+  }
+
   if (!channelUrl?.trim()) {
     throw new Error("YouTube channel URL is required.");
   }
@@ -28,9 +33,16 @@ function validateArtistInput({
   try {
     const url = new URL(channelUrl);
 
+    const allowedHosts = [
+      "youtube.com",
+      "www.youtube.com",
+      "m.youtube.com",
+      "music.youtube.com",
+    ];
+
     if (
-      !["youtube.com", "www.youtube.com", "m.youtube.com"]
-        .includes(url.hostname)
+      !["https:", "http:"].includes(url.protocol) ||
+      !allowedHosts.includes(url.hostname)
     ) {
       throw new Error();
     }
@@ -38,6 +50,7 @@ function validateArtistInput({
     throw new Error("A valid YouTube channel URL is required.");
   }
 }
+
 
 export async function registerArtistChannel({
   artistName,

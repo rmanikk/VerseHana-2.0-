@@ -48,7 +48,6 @@ export async function getMusicClient() {
   if (musicClient) return musicClient;
 
   const youtube = await getYouTubeClient();
-
   musicClient = youtube.music;
 
   return musicClient;
@@ -72,10 +71,7 @@ function getArtistName(artist) {
 
 function getArtistImage(artist) {
   const thumbnails = artist.thumbnails || [];
-
-  const thumbnail = thumbnails.find(
-    (item) => item?.url
-  );
+  const thumbnail = thumbnails.find((item) => item?.url);
 
   return thumbnail?.url || null;
 }
@@ -85,17 +81,9 @@ function isLikelyArtist(artist) {
   const category = artist.subtitle?.text || "";
   const imageUrl = getArtistImage(artist);
 
-  if (!artist.id || !name || !imageUrl) {
-    return false;
-  }
-
-  if (artist.item_type !== "artist") {
-    return false;
-  }
-
-  if (!/^Artist\b/i.test(category)) {
-    return false;
-  }
+  if (!artist.id || !name || !imageUrl) return false;
+  if (artist.item_type !== "artist") return false;
+  if (!/^Artist\b/i.test(category)) return false;
 
   if (
     GENERIC_ARTIST_NAME_PATTERNS.some((pattern) =>
@@ -128,16 +116,12 @@ export async function searchMusicArtists(query, limit = 12) {
   const uniqueArtists = new Map();
 
   for (const artist of artists) {
-    if (!isLikelyArtist(artist)) {
-      continue;
-    }
+    if (!isLikelyArtist(artist)) continue;
 
     const name = getArtistName(artist);
     const normalizedName = normalizeName(name);
 
-    if (uniqueArtists.has(normalizedName)) {
-      continue;
-    }
+    if (uniqueArtists.has(normalizedName)) continue;
 
     uniqueArtists.set(normalizedName, {
       id: artist.id,
@@ -146,9 +130,7 @@ export async function searchMusicArtists(query, limit = 12) {
       youtubeUrl: `https://music.youtube.com/channel/${artist.id}`,
     });
 
-    if (uniqueArtists.size >= safeLimit) {
-      break;
-    }
+    if (uniqueArtists.size >= safeLimit) break;
   }
 
   return Array.from(uniqueArtists.values());
@@ -194,17 +176,14 @@ export async function resolveYouTubeChannel(channelUrl) {
   }
 
   const youtube = await getYouTubeClient();
-
   let channelId = null;
 
-  // Direct channel ID URL.
   if (pathParts[0] === "channel" && pathParts[1]) {
     channelId = pathParts[1];
   } else if (
     pathParts[0].startsWith("@") ||
     ["c", "user"].includes(pathParts[0])
   ) {
-    // Resolve handle, custom URL, or legacy username URL.
     const endpoint = await youtube.resolveURL(
       parsedUrl.toString()
     );
@@ -245,9 +224,7 @@ export async function resolveYouTubeChannel(channelUrl) {
     null;
 
   if (!channelName) {
-    throw new Error(
-      "Unable to retrieve the channel name."
-    );
+    throw new Error("Unable to retrieve the channel name.");
   }
 
   return {
@@ -258,3 +235,79 @@ export async function resolveYouTubeChannel(channelUrl) {
       `https://www.youtube.com/channel/${channelId}`,
   };
 }
+
+// Retrieve videos belonging to one specific registered channel.
+
+
+export async function getChannelVideos(channelId, limit = 30) {
+  if (
+    typeof channelId !== "string" ||
+    !/^UC[\w-]{22}$/.test(channelId)
+  ) {
+    throw new Error("A valid YouTube channel ID is required.");
+  }
+
+  const safeLimit = Math.min(
+    50,
+    Math.max(1, Math.floor(Number(limit) || 30))
+  );
+
+  const youtube = await getYouTubeClient();
+  const channel = await youtube.getChannel(channelId);
+
+  if (channel.metadata?.external_id !== channelId) {
+    throw new Error("YouTube channel identity verification failed.");
+  }
+
+  const result = await channel.getVideos();
+
+  const items =
+    result.current_tab?.content?.contents || [];
+
+  return items
+    .filter(
+      (item) =>
+        item.type === "RichItem" &&
+        item.content?.content_type === "VIDEO" &&
+        item.content?.content_id
+    )
+    .slice(0, safeLimit)
+    .map((item) => {
+      const video = item.content;
+
+      const thumbnail =
+        video.content_image?.image?.find(
+          (image) => image.url
+        )?.url || null;
+
+      const accessibilityLabel =
+        video.renderer_context?.accessibility_context?.label || "";
+
+      const durationMatch = accessibilityLabel.match(
+        /(\d+)\s+minutes?,\s*(\d+)\s+seconds?/
+      );
+
+      const secondsMatch = accessibilityLabel.match(
+        /(\d+)\s+seconds?/
+      );
+
+      let durationSeconds = null;
+
+      if (durationMatch) {
+        durationSeconds =
+          Number(durationMatch[1]) * 60 +
+          Number(durationMatch[2]);
+      } else if (secondsMatch) {
+        durationSeconds = Number(secondsMatch[1]);
+      }
+
+      return {
+        id: video.content_id,
+        title: video.metadata?.title?.text || "",
+        url: `https://www.youtube.com/watch?v=${video.content_id}`,
+        thumbnail,
+        durationSeconds,
+      };
+    });
+}
+
