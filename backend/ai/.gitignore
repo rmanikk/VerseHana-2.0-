@@ -1,20 +1,15 @@
-# Python virtual environment
+
+# Python virtual environments
 .venv/
+venv/
 
 # Python cache
 __pycache__/
 *.py[cod]
 
-# Environment variables
+# Environment variables and secrets
 .env
 .env.*
 
 # Temporary files
 tmp/
-
-
-# Python virtual environments
-backend/ai/.venv/
-backend/ai/__pycache__/
-backend/ai/**/__pycache__/
-*.py[cod]
