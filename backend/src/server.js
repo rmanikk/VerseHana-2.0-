@@ -12,6 +12,8 @@ import verseflowRoutes from "./routes/verseflow.routes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
+import playlistRoutes from "./routes/playlist.routes.js";
+
 dotenv.config();
 
 const app = express();
@@ -54,6 +56,7 @@ app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/oauth", oauthRoutes);
 app.use("/api/verseflow", verseflowRoutes);
+app.use("/api/playlists", playlistRoutes);
 
 // Error handling
 app.use(notFound);
