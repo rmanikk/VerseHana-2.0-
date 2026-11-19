@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 
 import { Colors, Radius, Spacing, Typography } from "@/constants/theme";
+import { router } from "expo-router";
 
 const theme = Colors.dark;
 
@@ -268,26 +269,25 @@ export default function PulseScreen() {
           />
         </TouchableOpacity>
 
-        {/* COMPOSER */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.composer}
-          onPress={() =>
-            Alert.alert("Create a post", "Music sharing will be added next.")
-          }
-        >
-          <View style={styles.composerAvatar}>
-            <Ionicons name="person" size={19} color={theme.background} />
-          </View>
+{/* COMPOSER */}
+<TouchableOpacity
+  activeOpacity={0.8}
+  style={styles.composer}
+  onPress={() => router.push("/pulse/create-post")}
+>
+  <View style={styles.composerAvatar}>
+    <Ionicons name="person" size={19} color={theme.background} />
+  </View>
 
-          <Text style={styles.composerPlaceholder}>
-            Share a song or VerseFlow...
-          </Text>
+  <Text style={styles.composerPlaceholder}>
+    Share a song or VerseFlow...
+  </Text>
 
-          <View style={styles.addButton}>
-            <Ionicons name="add" size={23} color="#07191B" />
-          </View>
-        </TouchableOpacity>
+  <View style={styles.addButton}>
+    <Ionicons name="add" size={23} color="#07191B" />
+  </View>
+</TouchableOpacity>
+
 
         {/* FEED SECTION */}
         <View style={styles.sectionHeader}>
